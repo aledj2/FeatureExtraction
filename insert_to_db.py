@@ -68,14 +68,29 @@ class extractData():
             i.insert(9,splitgenloc[1])
             i.insert(10,splitgenloc[2])
     
-class create_ins_statements():
+class ins_feparams():
+  
+    #print extractData.feparams[8]
+    db=MySQLdb.Connect("localhost","aled","aled","featextr")
+    cursor=db.cursor()
+    insstatement="""insert into feparam (column1) values ("Aled","Jones",28,"M",20)"""
+    try:
+        cursor.execute(insstatement)
+        db.commit()
+    except:
+        db.rollback
+      
+    db.close
+    
+    
+    
+    
+    
+    
     a=len(extractData.feparams)
     b=len(extractData.stats)
     c=len(extractData.features)
     d=len(extractData.features[1])
-    
-    #print extractData.feparams[8]
-    
     for x in range(c):
         for p in range(d):
              
