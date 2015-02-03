@@ -69,32 +69,52 @@ class extractData():
             i.insert(10,splitgenloc[2])
     
 class ins_feparams():
-  
-    #print extractData.feparams[8]
-    db=MySQLdb.Connect("localhost","aled","aled","featextr")
+    feparams1=extractData.feparams[1]
+    feparams2=extractData.feparams[2]
+    feparams3=extractData.feparams[3]
+    feparams4=extractData.feparams[4]
+    
+    
+    db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="featextr")
     cursor=db.cursor()
-    insstatement="""insert into feparam (column1) values ("Aled","Jones",28,"M",20)"""
+    insstatement="""insert into feparam (ProtocolName,ProtocolDate,ScannerName,ScanDate) values (%s,%s,%s,%s)"""
     try:
-        cursor.execute(insstatement)
+        cursor.execute(insstatement,(feparams1,feparams2,feparams3,feparams4))#feparams3,feparams4))
         db.commit()
+        print "success"
     except:
         db.rollback
-      
+        print "fail"
+
+    #===========================================================================
+    # insstatement="""insert into employees (FirstName,LastName,Age,Sex,Salary) values ("Aled","Jones",28,"M",20)"""
+    # try:
+    #     cursor.execute(insstatement)
+    #     db.commit()
+    #     print "success"
+    # except:
+    #     db.rollback
+    #     print "fail"
+    #===========================================================================
     db.close
+      
+    #db.close
     
     
     
     
     
     
-    a=len(extractData.feparams)
-    b=len(extractData.stats)
-    c=len(extractData.features)
-    d=len(extractData.features[1])
-    for x in range(c):
-        for p in range(d):
-             
-            print extractData.features[x][p]
+    #===========================================================================
+    # a=len(extractData.feparams)
+    # b=len(extractData.stats)
+    # c=len(extractData.features)
+    # d=len(extractData.features[1])
+    # for x in range(c):
+    #     for p in range(d):
+    #          
+    #         print extractData.features[x][p]
+    #===========================================================================
             
 #===============================================================================
 # class add_to_database():
