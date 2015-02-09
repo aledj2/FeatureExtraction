@@ -7,8 +7,8 @@ import MySQLdb
 
 class Getfile():
     #specify the file and folder
-    chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
-    #chosenfolder = 'C:\Users\aled\workspace\Parse_FE_File' #Pc
+    #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
+    chosenfolder = 'C:\Users\Aled\workspace\Parse_FE_File' #Pc
     chosenfile = '252846911061_S01_Guys121919_CGH_1100_Jul11_2_1_1_truncated.txt'
     #print chosenfolder
     #print chosenfile
