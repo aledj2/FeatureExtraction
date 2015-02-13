@@ -4,7 +4,7 @@ import math
 class Getfile():
     #specify the file and folder
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
-    chosenfolder = 'C:\Users\Aled\workspace\FeatureExtraction' #PC
+    chosenfolder = 'C:\Users\Aled\workspace\FeatureExtraction\FEFiles' #PC
     chosenfile = '252846911061_S01_Guys121919_CGH_1100_Jul11_2_1_1_truncated.txt'
     #print chosenfolder
     #print chosenfile
@@ -257,4 +257,3 @@ class insert_features:
             db.rollback
             print "fail - unable to enter feature information"+features.insertstatements[i]
     db.close
-
