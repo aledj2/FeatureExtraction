@@ -2,11 +2,13 @@
 import MySQLdb
 import math
 import os
+from datetime import datetime
+from time import strftime
 
 class Getfile():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
-    chosenfolder = "C:\Users\Aled\workspace\FeatureExtraction\FEFiles" #PC
+    chosenfolder = "C:\Users\Aled\workspace\FeatureExtraction\\2FEFiles" #PC
     
     # Create an array to store all the files in. 
     chosenfiles=[]
@@ -16,11 +18,14 @@ class Getfile():
             #print (file)
             chosenfiles.append(file)
 
+class createoutputfile():
+    #specify folder to store the csv file which has contains the modified fields to be inserted into sql
+    outputfolder="C:\Users\Aled\workspace\FeatureExtraction\FEFileOutput" #PC
+
 class extractData():  
     def feedfile(self,filein):
         #filein is the file name from the array filled in above. one filename is supplied.   
         filein=filein
-        
         file2open= Getfile.chosenfolder+"\\"+filein
         
         #open file
@@ -93,7 +98,7 @@ class ins_feparams():
         filename=filein
                         
         #open connection to database and run SQL insert statement
-        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="featextr")
+        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
         feparams_ins_statement="""insert into feparam (FileName,ProtocolName,ProtocolDate,Scan_ScannerName,Scan_NumChannels,Scan_Date,Scan_MicronsPerPixelX,Scan_MicronsPerPixelY,Scan_OriginalGUID,Scan_NumScanPass,Grid_Name,Grid_Date,Grid_NumSubGridRows,Grid_NumSubGridCols,Grid_NumRows,Grid_NumCols,Grid_RowSpacing,Grid_ColSpacing,Grid_OffsetX,Grid_OffsetY,Grid_NomSpotWidth,Grid_NomSpotHeight,Grid_GenomicBuild,FeatureExtractor_Barcode,FeatureExtractor_Sample,FeatureExtractor_ScanFileName,FeatureExtractor_ArrayName,FeatureExtractor_ScanFileGUID,FeatureExtractor_DesignFileName,FeatureExtractor_ExtractionTime,FeatureExtractor_UserName,FeatureExtractor_ComputerName,FeatureExtractor_Version,FeatureExtractor_IsXDRExtraction,FeatureExtractor_ColorMode,FeatureExtractor_QCReportType,DyeNorm_NormFilename,DyeNorm_NormNumProbes,Grid_IsGridFile) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
         try:           
@@ -124,7 +129,7 @@ class ins_stats():
         all_stats.remove('DATA')
                              
         #open connection to database and run SQL insert statement
-        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="featextr")
+        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
         stats_ins_statement="""insert into stats(Array_ID,gDarkOffsetAverage,gDarkOffsetMedian,gDarkOffsetStdDev,gDarkOffsetNumPts,gSaturationValue,rDarkOffsetAverage,rDarkOffsetMedian,rDarkOffsetStdDev,rDarkOffsetNumPts,rSaturationValue,gAvgSig2BkgNegCtrl,rAvgSig2BkgNegCtrl,gNumSatFeat,gLocalBGInlierNetAve,gLocalBGInlierAve,gLocalBGInlierSDev,gLocalBGInlierNum,gGlobalBGInlierAve,gGlobalBGInlierSDev,gGlobalBGInlierNum,rNumSatFeat,rLocalBGInlierNetAve,rLocalBGInlierAve,rLocalBGInlierSDev,rLocalBGInlierNum,rGlobalBGInlierAve,rGlobalBGInlierSDev,rGlobalBGInlierNum,gNumFeatureNonUnifOL,gNumPopnOL,gNumNonUnifBGOL,gNumPopnBGOL,gOffsetUsed,gGlobalFeatInlierAve,gGlobalFeatInlierSDev,gGlobalFeatInlierNum,rNumFeatureNonUnifOL,rNumPopnOL,rNumNonUnifBGOL,rNumPopnBGOL,rOffsetUsed,rGlobalFeatInlierAve,rGlobalFeatInlierSDev,rGlobalFeatInlierNum,AllColorPrcntSat,AnyColorPrcntSat,AnyColorPrcntFeatNonUnifOL,AnyColorPrcntBGNonUnifOL,AnyColorPrcntFeatPopnOL,AnyColorPrcntBGPopnOL,TotalPrcntFeatOL,gNumNegBGSubFeat,gNonCtrlNumNegFeatBGSubSig,gLinearDyeNormFactor,gRMSLowessDNF,rNumNegBGSubFeat,rNonCtrlNumNegFeatBGSubSig,rLinearDyeNormFactor,rRMSLowessDNF,gSpatialDetrendRMSFit,gSpatialDetrendRMSFilteredMinusFit,gSpatialDetrendSurfaceArea,gSpatialDetrendVolume,gSpatialDetrendAveFit,rSpatialDetrendRMSFit,rSpatialDetrendRMSFilteredMinusFit,rSpatialDetrendSurfaceArea,rSpatialDetrendVolume,rSpatialDetrendAveFit,gNonCtrlNumSatFeat,gNonCtrl99PrcntNetSig,gNonCtrl50PrcntNetSig,gNonCtrl1PrcntNetSig,gNonCtrlMedPrcntCVBGSubSig,rNonCtrlNumSatFeat,rNonCtrl99PrcntNetSig,rNonCtrl50PrcntNetSig,rNonCtrl1PrcntNetSig,rNonCtrlMedPrcntCVBGSubSig,gNegCtrlNumInliers,gNegCtrlAveNetSig,gNegCtrlSDevNetSig,gNegCtrlAveBGSubSig,gNegCtrlSDevBGSubSig,rNegCtrlNumInliers,rNegCtrlAveNetSig,rNegCtrlSDevNetSig,rNegCtrlAveBGSubSig,rNegCtrlSDevBGSubSig,gAveNumPixOLLo,gAveNumPixOLHi,gPixCVofHighSignalFeat,gNumHighSignalFeat,rAveNumPixOLLo,rAveNumPixOLHi,rPixCVofHighSignalFeat,rNumHighSignalFeat,NonCtrlAbsAveLogRatio,NonCtrlSDevLogRatio,NonCtrlSNRLogRatio,AddErrorEstimateGreen,AddErrorEstimateRed,TotalNumFeatures,NonCtrlNumUpReg,NonCtrlNumDownReg,NumIsNorm,ROIHeight,ROIWidth,CentroidDiffX,CentroidDiffY,NumFoundFeat,MaxNonUnifEdges,MaxSpotNotFoundEdges,gMultDetrendRMSFit,rMultDetrendRMSFit,gMultDetrendSurfaceAverage,rMultDetrendSurfaceAverage,DerivativeOfLogRatioSD,gNonCtrl50PrcntBGSubSig,rNonCtrl50PrcntBGSubSig,gMedPrcntCVProcSignal,rMedPrcntCVProcSignal,geQCMedPrcntCVProcSignal,reQCMedPrcntCVProcSignal,gOutlierFlagger_Auto_FeatB_Term,rOutlierFlagger_Auto_FeatB_Term,gOutlierFlagger_Auto_FeatC_Term,rOutlierFlagger_Auto_FeatC_Term,gOutlierFlagger_Auto_BgndB_Term,rOutlierFlagger_Auto_BgndB_Term,gOutlierFlagger_Auto_BgndC_Term,rOutlierFlagger_Auto_BgndC_Term,OutlierFlagger_FeatChiSq,OutlierFlagger_BgndChiSq,GriddingStatus,IsGoodGrid,NumGeneNonUnifOL,TotalNumberOfReplicatedGenes,gPercentileIntensityProcessedSignal,rPercentileIntensityProcessedSignal,ExtractionStatus,QCMetricResults,gNonCtrlNumWellAboveBG,rNonCtrlNumWellAboveBG,UpRandomnessRatio,DownRandomnessRatio,UpRandomnessSDRatio,DownRandomnessSDRatio,UpRegQualityRatioResult,DownRegQualityRatioResult,ImageDepth,AFHold,gPMTVolts,rPMTVolts,GlassThickness,RestrictionControl,gDDN,rDDN,GridHasBeenOptimized,gNegCtrlSpread,rNegCtrlSpread,Metric_IsGoodGrid,Metric_IsGoodGrid_IsInRange,Metric_AnyColorPrcntFeatNonUnifOL,Metric_AnyColorPrcntFeatNonUnifOL_IsInRange,Metric_DerivativeLR_Spread,Metric_DerivativeLR_Spread_IsInRange,Metric_g_Signal2Noise,Metric_g_Signal2Noise_IsInRange,Metric_g_SignalIntensity,Metric_g_SignalIntensity_IsInRange,Metric_r_Signal2Noise,Metric_r_Signal2Noise_IsInRange,Metric_r_SignalIntensity,Metric_r_SignalIntensity_IsInRange,Metric_gRepro,Metric_gRepro_IsInRange,Metric_g_BGNoise,Metric_g_BGNoise_IsInRange,Metric_rRepro,Metric_rRepro_IsInRange,Metric_r_BGNoise,Metric_r_BGNoise_IsInRange,Metric_RestrictionControl,Metric_RestrictionControl_IsInRange,Metric_gDDN,Metric_gDDN_IsInRange,Metric_rDDN,Metric_rDDN_IsInRange) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
         try:
@@ -149,7 +154,6 @@ class run_ins_statements:
             
         #calculate number of features
         no_of_probes=len(all_features)
-        
             
         # use the array_ID that is returned from the insert of feparams.       
         Array_ID=arrayID
@@ -289,7 +293,7 @@ class insert_features:
         #for each element (statement name) in the insstatementnames list pull out the corresponding sqlstatement from the dictionary and execute the sql insert 
         for i in insertstatementnames:            
             #connect to db and create cursor
-            db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="featextr")
+            db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
             cursor3=db.cursor()
             #using the insertstatement names from the list pull out each sqlstatement from the dictionary and execute sql command 
             try:
@@ -320,4 +324,18 @@ for i in files:
     print "inserted "+str(i)+", file "+str(n)+" of "+str (no_of_files)
     n=n+1
 print "all inserted successfully"
- 
+
+# create variable for log file
+logfilefolder= createoutputfile.outputfolder
+
+#create open and write to a logfile to record what files have been added and when 
+logfile = "\\logfile.txt"
+logfile=open(logfilefolder+logfile,"a")
+timeinserted=datetime.now()
+
+logfile.write("File Inserted\tDate Added\n")
+for i in files:
+    logfile.write(i+"\t"+timeinserted.strftime('%Y_%m_%d_%H_%M_%S')+"\n")
+logfile.write("--------------------------------------------------------------------------------------\n")
+logfile.close()
+print "logfile = "+str(logfilefolder)+str(logfile)

@@ -200,7 +200,7 @@ class run_ins_statements:
         #open the output file and append the completed forfile string  
         csvfile=open(output_folder+output_file,"a")
         csvfile.write(forfile)
-        
+        csvfile.close()
         #empty the forfile variable (this may not be required as this is done at the start of this class)
         forfile=""
         
@@ -219,7 +219,7 @@ class insert_features:
         #need change the filepath so it works in the sql insert statement
         csvpathforsqlins=csvpath.replace('\\','\\\\')  
         insertcsv="LOAD DATA LOCAL INFILE '"+csvpathforsqlins+"' REPLACE INTO TABLE `dev_featextr`.`features` CHARACTER SET latin1 FIELDS TERMINATED BY '\\t' ENCLOSED BY '\"' ESCAPED BY '' LINES TERMINATED BY '\\r\\n' (`Array_ID`, `FeatureNum`, `Row`, `Col`, `SubTypeMask`, `ControlType`, `ProbeName`, `SystematicName`, `Chromosome`, `Start`, `Stop`, `PositionX`, `PositionY`, `LogRatio`, `LogRatioError`, `PValueLogRatio`, `gProcessedSignal`, `rProcessedSignal`, `gProcessedSigError`, `rProcessedSigError`, `gMedianSignal`, `rMedianSignal`, `gBGMedianSignal`, `rBGMedianSignal`, `gBGPixSDev`, `rBGPixSDev`, `gIsSaturated`, `rIsSaturated`, `gIsFeatNonUnifOL`, `rIsFeatNonUnifOL`, `gIsBGNonUnifOL`, `rIsBGNonUnifOL`, `gIsFeatPopnOL`, `rIsFeatPopnOL`, `gIsBGPopnOL`, `rIsBGPopnOL`, `IsManualFlag`, `gBGSubSignal`, `rBGSubSignal`, `gIsPosAndSignif`, `rIsPosAndSignif`, `gIsWellAboveBG`, `rIsWellAboveBG`, `SpotExtentX`, `gBGMeanSignal`, `rBGMeanSignal`);"
-
+        #print insertcsv
         #connect to db and create cursor
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor3=db.cursor()
@@ -227,7 +227,7 @@ class insert_features:
         try:
             cursor3.execute(insertcsv)
             db.commit()
-            print "completed upload"
+            print "sql insert statement executed"
         except:
             db.rollback
             print "fail - unable to enter feature information"
@@ -241,7 +241,7 @@ no_of_files=len(files)
 n=1
 for i in files:
     exData.feedfile(i)
-    print "read "+str(i)+", file "+str(n)+" of "+str (no_of_files)
+    print str(i)+", file "+str(n)+" of "+str (no_of_files)+"added to csv!"
     n=n+1
     
 # create variables holding the location of the output file
@@ -258,7 +258,7 @@ for i in files:
     logfile.write(i+"\t"+timeinserted.strftime('%Y_%m_%d_%H_%M_%S')+"\n")
 logfile.write("--------------------------------------------------------------------------------------\n")
 logfile.close()
-run_ins_statements.run_ins_statements.csvfile.close()
+
 
 #print messages
 #print "successfully uploaded to database"

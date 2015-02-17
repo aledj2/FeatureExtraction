@@ -156,3 +156,4 @@ class insert_features():
             db.rollback
             print "fail - unable to enter feature information"
     db.close
+print "complete"
