@@ -18,6 +18,7 @@ class Getfile():
             #print (file)
             chosenfiles.append(file)
 
+
 class createoutputfile():
     #specify folder to store the csv file which has contains the modified fields to be inserted into sql
     outputfolder="C:\Users\Aled\workspace\FeatureExtraction\FEFileOutput" #PC
@@ -120,6 +121,7 @@ class ins_feparams():
         # pass to the ins stats function the stats_listin and features_listin (neither have been used in this module) and the array_ID created on the insert.
         ins_stats().insert_stats(stats_listin,arrayID,features_listin)
          
+         
 class ins_stats():
     def insert_stats(self,statslistin,array_ID,features_listin):
         #create a copy of the stats array and arrayID.
@@ -149,8 +151,8 @@ class ins_stats():
          
         # pass the features list and array ID into the run_ins statement module 
         run_ins_statements().run_ins_statements(features_listin,arrayID)
-           
-        
+     
+                  
 class run_ins_statements:
     def run_ins_statements(self,features_listin,arrayID):       
         # it is quicker to run fewer insert statements so 10 insert statements are created.
@@ -209,6 +211,7 @@ class run_ins_statements:
         extractData.stats=[]
         extractData.features=[]
 
+
 class insert_features:
     #from run_ins_statements give the dictionary of insert statements and list of insert sequence names 
     def insert_features(self,outputfolder,outputfile):
@@ -233,7 +236,6 @@ class insert_features:
             print "fail - unable to enter feature information"
         db.close
 
-
 #for each file in the chosenfile array enter this into the feedfile function in extractData class
 files=Getfile.chosenfiles
 exData=extractData()
@@ -241,7 +243,7 @@ no_of_files=len(files)
 n=1
 for i in files:
     exData.feedfile(i)
-    print str(i)+", file "+str(n)+" of "+str (no_of_files)+"added to csv!"
+    print str(i)+", file "+str(n)+" of "+str (no_of_files)+" added to csv!"
     n=n+1
     
 # create variables holding the location of the output file
@@ -259,9 +261,7 @@ for i in files:
 logfile.write("--------------------------------------------------------------------------------------\n")
 logfile.close()
 
-
 #print messages
-#print "successfully uploaded to database"
 print "insertedfile = "+str(csvfolder)+str(csvfile)
 print "logfile = "+str(csvfolder)+str(logfile)
 

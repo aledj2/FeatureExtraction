@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from time import strftime
 
+
 class Getfile():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
@@ -18,9 +19,11 @@ class Getfile():
             #print (file)
             chosenfiles.append(file)
 
+
 class createoutputfile():
     #specify folder to store the csv file which has contains the modified fields to be inserted into sql
     outputfolder="C:\Users\Aled\workspace\FeatureExtraction\FEFileOutput" #PC
+
 
 class extractData():  
     def feedfile(self,filein):
@@ -115,6 +118,7 @@ class ins_feparams():
         # pass to the ins stats function the stats_listin and features_listin (neither have been used in this module) and the array_ID created on the insert.
         ins_stats().insert_stats(stats_listin,arrayID,features_listin)
         
+        
 class ins_stats():
     def insert_stats(self,statslistin,array_ID,features_listin):
         #create a copy of the stats array and arrayID.
@@ -189,7 +193,6 @@ class run_ins_statements:
         # Once all SQL statements have been created feed these into the insert features module 
         insert_features().insert_features(Create_ins_statements.insertstatements,Create_ins_statements.insertstatementnames)
         
-
 
 #create class which builds SQL statements
 class create_ins_statements():
