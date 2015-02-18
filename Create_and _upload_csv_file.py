@@ -1,4 +1,3 @@
-#from __future__ import print_function
 import MySQLdb
 import math
 import os
@@ -8,7 +7,7 @@ from time import strftime
 class Getfile():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
-    chosenfolder = "C:\\Users\\Aled\\workspace\\FeatureExtraction\\2FEFiles" #PC
+    chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\2FEFiles" #PC
     
     # Create an array to store all the files in. 
     chosenfiles=[]
@@ -21,7 +20,7 @@ class Getfile():
 
 class createoutputfile():
     #specify folder to store the csv file which has contains the modified fields to be inserted into sql
-    outputfolder="C:\Users\Aled\workspace\FeatureExtraction\FEFileOutput" #PC
+    outputfolder="C:\Users\Aled\Google Drive\MSc project\FEFileOutput" #PC
     #use the datetime function to include the datetime into filename. this removes the need to rename the file when complete and to keep a record of all files that have been added (may take up too much memory so could be deleted as duplicating original fefile)
     i=datetime.now()
     outputfile="\\to_insert_"+i.strftime('%Y_%m_%d_%H_%M_%S')+".csv"
