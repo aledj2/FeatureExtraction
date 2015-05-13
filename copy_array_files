@@ -8,6 +8,7 @@ and converts into the filename format and then copies them to desired folder
 import os
 import fnmatch
 import shutil
+import glob
 # file containing list of arrays to import
 list_of_arrays_file=open('S:\\Genetics_Data2\\Array\\Audits and Projects\\150512_Arrays_for_Aled\\book1.txt','r')
 
@@ -57,3 +58,8 @@ for i in filename_string:
             #print "file found"
             shutil.copy2(array_dir+"\\"+file,destination)
 print "copy complete"
+
+# check files have copied successfully
+for i in filename_string:
+    if glob.glob1(destination,i) is False:
+        print i
