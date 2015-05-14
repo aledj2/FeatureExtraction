@@ -11,7 +11,7 @@ import numpy as np
 List_of_probes_from_query=()
 
 #query to pull out each distinct probename. reference values table contains all distinct probe names
-distinct_probe_names = "select probename from referencevalues"
+distinct_probe_names = "select distinct p.probename from probeorder p, williams_features w where p.ProbeName=w.ProbeName"
 
 # open connection to the database
 db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
@@ -61,7 +61,7 @@ gsignal_int_SD_dict={}
 rsignal_int_SD_dict={}
 
 # select statement to pull out the g and r processed signal from features table. NB further clauses can be added to where statement at this stage
-extract_sig_int="select gprocessedsignal, rprocessedsignal from features where probename=\""
+extract_sig_int="select gprocessedsignal, rprocessedsignal from williams_features where probename=\""
 
 #loop through the newprobelist for each probename extract the signal intensities.
 for i in range(len_new_probelist):
@@ -120,7 +120,7 @@ print "average intensities calculated "+str(localtime)
 print"inserting to database"
 
 #update the table with the average signal intensities
-insert_average_sigint= "update referencevalues set rsignalint=%s, gsignalint=%s, rsignalintSD=%s, gsignalintSD=%s where probename=%s"
+insert_average_sigint= "update williams_referencevalues set rsignalint=%s, gsignalint=%s, rsignalintSD=%s, gsignalintSD=%s where probename=%s"
 cursor=db.cursor()
 #for each probe in the list of probes execute insert statement using the probe name (i) to pull out the respective average signal intensities
 for i in newprobelist:

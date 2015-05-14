@@ -15,7 +15,7 @@ pylab.ion()
 List_of_probes_from_query=()
 
 #query to pull out each distinct probename. reference values table contains all distinct probe names
-distinct_probe_names = "select p.probename from probeorder p, zscore_features z where p.probename=z.probename"
+distinct_probe_names = "select distinct p.probename from probeorder p, williams_features z where p.probename=z.probename"
 # distinct_probe_names = "select probename from probeorder"
 
 # open connection to the database
@@ -65,7 +65,7 @@ gsignal_int_dict={}
 rsignal_int_dict={}
 
 # select statement to pull out the g and r processed signal from features table. NB further clauses can be added to where statement at this stage
-extract_sig_int="select gprocessedsignal, rprocessedsignal from features where probename=\""
+extract_sig_int="select gprocessedsignal, rprocessedsignal from williams_features where probename=\""
 
 #loop through the newprobelist for each probename extract the signal intensities.
 for i in range(len_new_probelist):
@@ -98,6 +98,7 @@ for i in range(len_new_probelist):
     gsignal_int_dict[newprobelist[i]] = gsigint
     rsignal_int_dict[newprobelist[i]] = rsigint    
 
+print "gsignal_int_dict"+str(gsignal_int_dict['A_14_P101946'])
 
 for i in range(len_new_probelist):  
     if scipy.normaltest(gsignal_int_dict[newprobelist[i]])[1] < 0.05:
@@ -108,8 +109,8 @@ for i in range(len_new_probelist):
         pass
      
     if scipy.normaltest(rsignal_int_dict[newprobelist[i]])[1] < 0.05:
-        #print str(scipy.normaltest(rsignal_int_dict[newprobelist[i]]))+newprobelist[i] + " is NOT normally distributed for red SI"
-        pass
+        print str(scipy.normaltest(rsignal_int_dict[newprobelist[i]]))+newprobelist[i] + " is NOT normally distributed for red SI"
+        #pass
     else:
         #print str(scipy.normaltest(rsignal_int_dict[newprobelist[i]]))+newprobelist[i] + " is normally distributed for red SI"
         pass
@@ -123,7 +124,7 @@ for i in range(len_new_probelist):
     pdf=scipy.norm.pdf(silist,mean,SD)
     plt.pyplot.plot(silist,pdf)
     plt.pyplot.suptitle(newprobelist[i]+' RED')
-    #plt.pyplot.show()
+    plt.pyplot.show()
     
 for i in range(len_new_probelist):
 #for i in range(1):
@@ -138,10 +139,10 @@ for i in range(len_new_probelist):
 #close connection to db
 db.close
 
-print "GREEN"
-print gsignal_int_dict
-print "RED"
-print rsignal_int_dict
+#print "GREEN"
+#print gsignal_int_dict
+#print "RED"
+#print rsignal_int_dict
 
 #     
 #     #calculate SD
