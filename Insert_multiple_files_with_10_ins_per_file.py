@@ -8,7 +8,8 @@ from datetime import datetime
 class Getfile():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
-    chosenfolder = "C:\Users\Aled\Google Drive\MSc project\\feFiles" #PC
+    #chosenfolder = "C:\Users\Aled\Google Drive\MSc project\\feFiles" #PC
+    chosenfolder="F:\\arrayfiles"#USB
     
     # Create an array to store all the files in. 
     chosenfiles=[]

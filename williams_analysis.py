@@ -252,12 +252,12 @@ class AnalyseZscores():
         
 
         #SQL statement to insert of update williams_analysis table
-        #UpdateAnalysisTable="""insert into williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s"""
-        UpdateAnalysisTable="""update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
+        UpdateAnalysisTable="""insert into williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s"""
+        #UpdateAnalysisTable="""update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
         try:
             #use first for update query. second for insert           
-            cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
-            #cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95)))
+            #cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
+            cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95)))
             db.commit()
             #print "update query executed"
         except MySQLdb.Error, e:
@@ -268,20 +268,20 @@ class AnalyseZscores():
             db.close()
 
 
-# retreive the arrayIds from the database and run threough above module
+# retreive the arrayIds from the database and run through above module
 
 
 #open connection to database and run SQL insert statement
 db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
 
 #execute query and assign the results to list_of_arrayIDs variable- depends if updating or inserting data 
-#arrayIDs_to_update="""select distinct f.Array_ID from williams_features f where f.greensigintzscore is not null and f.array_ID not in (select ArrayID from williams_analysis)"""
-arrayIDs_to_update="""select distinct f.Array_ID from williams_features f where f.greensigintzscore is not null""" # if updating analysis tables above use this one. if inserting use above
+arrayIDs_to_update="""select distinct f.Array_ID from williams_features f where f.greensigintzscore is not null and f.array_ID not in (select ArrayID from williams_analysis)"""
+#arrayIDs_to_update="""select distinct f.Array_ID from williams_features f where f.greensigintzscore is not null""" # if updating analysis tables above use this one. if inserting use above
 
 try:
     db.query(arrayIDs_to_update)
     List_of_arrays_from_query=db.use_result()
-    #print "array IDs received"
+    print "array IDs received"
 except:
     db.rollback
     print "fail - unable to retrieve arrayIDs"
@@ -299,6 +299,7 @@ ArrayIDs=List_of_arrays_from_query.fetch_row(0,0)
 
 #calculate number of arrays
 no_of_arrays=len(ArrayIDs)
+
 #for each of the arrayIDs run above module
 for i in range(no_of_arrays):
 #for i in range(10):
