@@ -17,7 +17,7 @@ class CalculateLogRatios():
         cursor=db.cursor()
         
         #SQL statement which captures or creates the values required
-        UpdateLogRatio="""update features, referencevalues set GreenLogratio=log2(features.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(features.rprocessedsignal/referencevalues.rsignalint),features.rReferenceAverageUsed = referencevalues.rSignalInt,features.gReferenceAverageUsed=referencevalues.gSignalInt, features.rReferenceSD=referencevalues.rSignalIntSD, features.gReferenceSD=referencevalues.gSignalIntSD, features.greensigintzscore=((features.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),features.redsigintzscore=((features.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where features.ProbeName=referencevalues.ProbeName and features.array_ID=%s"""
+        UpdateLogRatio="""update features, referencevalues set GreenLogratio=log2(features.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(features.rprocessedsignal/referencevalues.rsignalint),features.rReferenceAverageUsed = referencevalues.rSignalInt,features.gReferenceAverageUsed=referencevalues.gSignalInt, features.rReferenceSD=referencevalues.rSignalIntSD, features.gReferenceSD=referencevalues.gSignalIntSD, features.greensigintzscore=((features.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),features.redsigintzscore=((features.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where features.ProbeName=referencevalues.ProbeName and features.controltype=0 and features.array_ID=%s"""
         try:           
             cursor.execute(UpdateLogRatio,str((arrayID2test)))
             db.commit()
@@ -30,4 +30,5 @@ class CalculateLogRatios():
             db.close()
 
  
-
+#for i in range (178,191):
+    #CalculateLogRatios().CalculateLogRatios(i)

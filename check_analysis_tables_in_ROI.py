@@ -1,6 +1,7 @@
 '''
 Created on 22 May 2015
-
+This script takes all the tables in the database, and all the tables listed in roi.analysis_table.
+It checks that every table which is in the roi.analysis table (which is used in the analyse multiple ROI script (and possibly others)) actually exists in the database 
 @author: Aled
 '''
 import MySQLdb
@@ -44,7 +45,7 @@ for i in range(len_of_roi_analysis_tables):
 all_is= 0
 for i in roi_tables:
     if i in dbtables:
-        pass
+        print i + " table exists"
     else:
         all_is=1
         print str(i)+" does not exist in database"

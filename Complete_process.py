@@ -14,6 +14,7 @@ from datetime import datetime
 import complete_Perform_ZTest
 import re
 import Complete_calculate_average_sigInt_and_SD
+import analyse_multiple_ROI
 #from time import strftime
 
 
@@ -21,7 +22,7 @@ class Getfile():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
     #chosenfolder = "C:\Users\Aled\Google Drive\MSc project\\feFiles" #PC
-    chosenfolder="F:\\arrayfiles"#USB
+    chosenfolder="F:\\arrayfiles\\250515"#USB
     
     # Create an array to store all the files in. 
     chosenfiles=[]
@@ -398,13 +399,16 @@ for i in files:
 print "all inserted successfully"
 
 
-#populate the reference values table
-Complete_calculate_average_sigInt_and_SD.CalculateReferenceRange().CalculateReference(1)
+#if needed populate the reference values table
+#Complete_calculate_average_sigInt_and_SD.CalculateReferenceRange().CalculateReference()
 
 #get a list of all the array IDs just inserted to apss to perform z score script
 arraylist=insert_features.insert_features.arrayIDlist
 for i in arraylist:
         complete_Perform_ZTest.CalculateLogRatios().CalculateLogRatios(i)
+
+#perform ROI analysis
+analyse_multiple_ROI.GetROI().GetROI()
         
 # create variable for log file
 logfilefolder= createoutputfile.outputfolder
