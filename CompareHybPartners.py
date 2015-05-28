@@ -3,7 +3,8 @@ Created on 26 May 2015
 
 @author: Aled
 '''
-
+from time import strftime
+from datetime import datetime
 import MySQLdb
 
 class Get_Analysis_tables():
@@ -98,9 +99,11 @@ class compare_partners():
         #print arrays_analysed
         #print arrayIDs
         
-        print ROIs
+        #print ROIs
+        #x= datetime.now()
+        #print x.strftime('%Y_%m_%d_%H_%M_%S')
+        print "processing"
         for array in arrayIDs:
-            #print array
             for roi in ROIs:
                 #print roi
                 #print arrays_analysed[roi]
@@ -111,7 +114,7 @@ class compare_partners():
                     db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
                     cursor=db.cursor()
                      
-                    analysis_query1="""select GREEN_probes_outside_90,RED_probes_outside_90,Num_of_probes from """
+                    analysis_query1="""select Green_del_probes_90,Green_dup_probes_90,red_del_probes_90,red_dup_probes_90,Num_of_probes from """
                     analysis_query2=""" where arrayID = """
                     combinedquery=analysis_query1+roi+analysis_query2+str(array)
                      
@@ -127,13 +130,28 @@ class compare_partners():
                         db.close()
                         
                     #print result[0][0]
-                    if result[0][0] > (0.5 * result[0][2]) and result[0][1] > (0.5*result[0][2]): 
-                        print "Both Hyb partners in "+str(array)+" have an imbalance in " + roi
-                        print result[0][0]
-                        print result[0][2]
-                        print 0.5 * result[0][2]
+                    if result[0][0] > (0.5 * result[0][4]) and result[0][2] > (0.5*result[0][4]): 
+                        print "Both Hyb partners in array "+str(array)+" have an imbalance in " + roi
+                        print "GREEN probes deleted (90%) "+str(result[0][0])
+                        print "RED probes deleted (90%) "+str (result[0][2])
+                        print "half of total number of probes= "+str(0.5 * result[0][4])
+                        #x= datetime.now()
+                        #print x.strftime('%Y_%m_%d_%H_%M_%S')
                     else:
                         #print "ok"
                         pass
-            
-Get_Analysis_tables().Tables()
+                    
+                    if result[0][1] > (0.5 * result[0][4]) and result[0][3] > (0.5*result[0][4]): 
+                        print "Both Hyb partners in "+str(array)+" have an imbalance in " + roi
+                        print "GREEN probes gain (90%) "+str(result[0][1])
+                        print "RED probes gain (90%) "+str (result[0][3])
+                        print "half of total number of probes= "+str(0.5 * result[0][4])
+                        #x= datetime.now()
+                        #print x.strftime('%Y_%m_%d_%H_%M_%S')
+                    else:
+                        #print "ok"
+                        pass
+if __name__=="__main__":
+    Get_Analysis_tables().Tables()
+    print "done"
+    
