@@ -14,10 +14,13 @@ It also requires probes to have the z scores calculated, which requires a refere
 @author: Aled
 '''
 import MySQLdb
+#from CompareHybPartners import Get_Analysis_tables
+from datetime import datetime
 
 class GetROI():
-    def GetROI (self):
+    def GetROI (self,arrayID):
         # perform query to get the distinct ROIs and the corresponding analysis tables
+        array_ID=arrayID
         
         #open connection to database and run SQL select statement
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
@@ -36,21 +39,26 @@ class GetROI():
         
         #should return a list of ((analysistable,ROI_ID),(...))
         #so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
+        
+        print "starting ROI"
+        x= datetime.now()
+        print x.strftime('%Y_%m_%d_%H_%M_%S')
         print ROIqueryresult
         number_of_ROI=len(ROIqueryresult)
         #print "number of ROI= "+str(number_of_ROI)
         for i in range(number_of_ROI):
-            group_array_probes().group_array_probes(ROIqueryresult[i][0],ROIqueryresult[i][1])
+            group_array_probes().group_array_probes(ROIqueryresult[i][0],ROIqueryresult[i][1],array_ID)
             
 class group_array_probes():
-    def group_array_probes (self, analysistable,ROI_ID):
-        print "adding into "+analysistable
+    def group_array_probes (self, analysistable,ROI_ID,array_ID):
+        array_ID=array_ID
+        print "adding "+str(array_ID)+ " into "+analysistable
         # select all the arrayID, green and red Z score for all probes within the ROI for all arrays which haven't been analysed. 
-        getZscorespart1="""select f.array_ID, f.greensigintzscore, f.redsigintzscore from features f, roi r where f.Array_ID not in (select t.ArrayID from """
-        getzscorespart2= """ t) and substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
+        getZscorespart1="""select f.array_ID, f.greensigintzscore, f.redsigintzscore from features f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
+        getzscorespart2=""" and f.array_ID="""
         #NB remove arrayID=1
     
-        combinedquery= getZscorespart1+analysistable+getzscorespart2+str(ROI_ID)
+        combinedquery= getZscorespart1+str(ROI_ID)+getzscorespart2+str(array_ID)
         #this returns the signal intensities for probes within the ROI from all arrays that aren't already in the analysis table
         
         #open connection to database and run SQL select statement    
@@ -75,37 +83,37 @@ class group_array_probes():
         #but this is for ALL arrays so need to group probes into arrays 
         
         #print Zscorequeryresult
-        #print "result="+str( Zscorevalues)
+        print "result="+str( Zscorequeryresult)
         
         #loop through the above query results and add the arrayID to a list
-        listofarrayids=[] 
-        for i in range(len(Zscorequeryresult)):
+        #listofarrayids=[] 
+        #for i in range(len(Zscorequeryresult)):
             #print Zscorequeryresult[i][0]
-            listofarrayids.append(Zscorequeryresult[i][0])
+            #listofarrayids.append(Zscorequeryresult[i][0])
             
         #print listofarrayids
         #use set() to create a list of distinct arrayIDs 
-        uniquearrayids=set(listofarrayids)
+        #uniquearrayids=set(listofarrayids)
         #print uniquearrayids
         
         #for each unique array:
-        for arrayID in uniquearrayids:
+        #for arrayID in uniquearrayids:
             #print arrayID
             #create arrays to hold the red and green z scores 
-            listofgreenZscores=[]
-            listofredZscores=[]
-            
-            #loop through the query result
-            for i in range (len(Zscorequeryresult)):     
-                #print i
-                # if its the correct array:
-                if Zscorequeryresult[i][0] == arrayID:
-                    #append the z scores to the                     
-                    listofgreenZscores.append(Zscorequeryresult[i][1])
-                    listofredZscores.append(Zscorequeryresult[i][2])
-            #print "probes from array "+str(i)+" added to list"
-            #print "list of greenZscores= "+str(listofgreenZscores)
-            analyse_the_array().analyse(arrayID,listofgreenZscores,listofredZscores,analysistable)
+        listofgreenZscores=[]
+        listofredZscores=[]
+        
+        #loop through the query result
+        for i in range (len(Zscorequeryresult)):     
+            #print i
+            # if its the correct array:
+            if Zscorequeryresult[i][0] == array_ID:
+                #append the z scores to the                     
+                listofgreenZscores.append(Zscorequeryresult[i][1])
+                listofredZscores.append(Zscorequeryresult[i][2])
+        #print "probes from array "+str(i)+" added to list"
+        print "list of greenZscores= "+str(listofgreenZscores)
+        analyse_the_array().analyse(array_ID,listofgreenZscores,listofredZscores,analysistable)
             
 class analyse_the_array():
     def analyse (self, arrayID,greenZscores,redZscores,analysistable):           
@@ -114,7 +122,8 @@ class analyse_the_array():
         greenZscores=greenZscores
         redZscores=redZscores
         analysistable=analysistable
-        print "arrayID received by analyse_the_array.analyse()= "+str(arrayID)
+        
+        print "arrayID received by analyse method= "+str(arrayID)
         #print "analysis table recieved= "+str(analysistable) 
         #enter the z score for 90 and 95%
         cutoff90=1.645
@@ -125,16 +134,24 @@ class analyse_the_array():
          
          
         #create variables to count the probes outside 90 or 95% of normal range 
-        red90=0
-        red95=0
-        green90=0
-        green95=0
-         
+        reddel90=0
+        reddel95=0
+        greendel90=0
+        greendel95=0
+        reddup90=0
+        reddup95=0
+        greendup90=0
+        greendup95=0 
+        
         #create counts for segment
-        redabn=0
-        greenabn=0
-        redabn2=0
-        greenabn2=0
+        reddelabn=0
+        reddupabn=0
+        greendelabn=0
+        greendupabn=0
+        reddelabn2=0
+        reddupabn2=0
+        greendelabn2=0
+        greendupabn2=0
                  
         #select which cut off to be applied in below (from above)
         cutoff=cutoff90
@@ -143,27 +160,27 @@ class analyse_the_array():
         for i in range(no_of_probes_2_analyse):
             #assess the redZscore               
             redZscore=float(redZscores[i])
-            if redZscore> cutoff95:
-                red95=red95+1
+            if redZscore > cutoff95:
+                reddup95=reddup95+1
             elif redZscore < -cutoff95:
-                red95=red95+1
+                reddel95=reddel95+1
             elif redZscore > cutoff90:
-                red90=red90+1
+                reddup90=reddup90+1
             elif redZscore < -cutoff90:
-                red90=red90+1
+                reddel90=reddel90+1
             else:
                 pass
          
             #assess the greenZscore
             greenZscore=float(greenZscores[i])
             if greenZscore> cutoff95:
-                green95=green95+1
+                greendup95=greendup95+1
             elif greenZscore < -cutoff95:
-                green95=green95+1
+                greendel95=greendel95+1
             elif greenZscore > cutoff90:
-                green90=green90+1
+                greendup90=greendup90+1
             elif greenZscore < -cutoff90:
-                green90=green90+1
+                greendel90=greendel90+1
             else:
                 pass
          
@@ -176,11 +193,15 @@ class analyse_the_array():
             if i == 0:
                 previtem=0
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff or item < -cutoff and previtem < -cutoff:
-                    redabn=redabn+2
+                if item > cutoff and previtem > cutoff:
+                    reddupabn=reddupabn+2
+                elif item < -cutoff and previtem < -cutoff:
+                    reddelabn=reddelabn+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff or item < -cutoff and previtem < cutoff and previtem > -cutoff:
-                    redabn=redabn+1
+                elif item > cutoff and previtem < cutoff:
+                    reddupabn=reddupabn+1
+                elif item <-cutoff and previtem >-cutoff:
+                    reddelabn
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
                     pass
@@ -192,15 +213,19 @@ class analyse_the_array():
             else:
                 previtem=float(redZscores[i-1])
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff or item < -cutoff and previtem < -cutoff:
-                    redabn=redabn+2
+                if item > cutoff and previtem > cutoff:
+                    reddupabn=reddupabn+2
+                elif item < -cutoff and previtem < -cutoff:
+                    reddelabn=reddelabn+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff or item < -cutoff and previtem < cutoff and previtem > -cutoff:
-                    redabn=redabn+1
+                elif item > cutoff and previtem < cutoff:
+                    reddupabn=reddupabn+1
+                elif item <-cutoff and previtem >-cutoff:
+                    reddelabn=reddelabn+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
                     pass
-                #if probe is normal and previous probe is also normal give a score of 0
+                #if probe is normal and previous probe is also normal give a score of 0(pass)
                 elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
                     pass
                 else:
@@ -212,11 +237,15 @@ class analyse_the_array():
             if i == 0:
                 previtem=0
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff or item < -cutoff and previtem < -cutoff:
-                    greenabn=greenabn+2
+                if item > cutoff and previtem > cutoff:
+                    greendupabn=greendupabn+2
+                elif item < -cutoff and previtem < -cutoff:
+                    greendelabn=greendelabn+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff or item < -cutoff and previtem < cutoff and previtem > -cutoff:
-                    greenabn=greenabn+1
+                elif item > cutoff and previtem < cutoff:
+                    greendupabn=greendupabn+1
+                elif item <-cutoff and previtem >-cutoff:
+                    greendelabn=greendelabn+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
                     pass
@@ -228,15 +257,19 @@ class analyse_the_array():
             else:
                 previtem=float(greenZscores[i-1])
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff or item < -cutoff and previtem < -cutoff:
-                    greenabn=greenabn+2
+                if item > cutoff and previtem > cutoff:
+                    greendupabn=greendupabn+2
+                elif item < -cutoff and previtem < -cutoff:
+                    greendelabn=greendelabn+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff or item < -cutoff and previtem < cutoff and previtem > -cutoff:
-                    greenabn=greenabn+1
+                elif item > cutoff and previtem < cutoff:
+                    greendupabn=greendupabn+1
+                elif item <-cutoff and previtem >-cutoff:
+                    greendelabn=greendelabn+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
                     pass
-                #if probe is normal and previous probe is also normal give a score of 0
+                #if probe is normal and previous probe is also normal give a score of 0(pass)
                 elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
                     pass
                 else:
@@ -253,11 +286,15 @@ class analyse_the_array():
             if i == 0:
                 previtem=0
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2 or item < -cutoff2 and previtem < -cutoff2:
-                    redabn2=redabn2+2
+                if item > cutoff2 and previtem > cutoff2:
+                    reddupabn2=reddupabn2+2
+                elif item < -cutoff2 and previtem < -cutoff2:
+                    reddelabn2=reddelabn2+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 or item < -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    redabn2=redabn2+1
+                elif item > cutoff2 and previtem < cutoff2:
+                    reddupabn2=reddupabn2+1
+                elif item <-cutoff2 and previtem >-cutoff2:
+                    reddelabn2=reddelabn2+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
                     pass
@@ -269,15 +306,19 @@ class analyse_the_array():
             else:
                 previtem=float(redZscores[i-1])
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2 or item < -cutoff2 and previtem < -cutoff2:
-                    redabn2=redabn2+2
+                if item > cutoff2 and previtem > cutoff2:
+                    reddupabn2=reddupabn2+2
+                elif item < -cutoff2 and previtem < -cutoff2:
+                    reddelabn2=reddelabn2+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 or item < -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    redabn2=redabn2+1
+                elif item > cutoff2 and previtem < cutoff2:
+                    reddupabn2=reddupabn2+1
+                elif item <-cutoff2 and previtem >-cutoff2:
+                    reddelabn2=reddelabn2+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
                     pass
-                #if probe is normal and previous probe is also normal give a score of 0
+                #if probe is normal and previous probe is also normal give a score of 0(pass)
                 elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
                     pass
                 else:
@@ -290,11 +331,15 @@ class analyse_the_array():
             if i == 0:
                 previtem=0
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2 or item < -cutoff2 and previtem < -cutoff2:
-                    greenabn2=greenabn2+2
+                if item > cutoff2 and previtem > cutoff2:
+                    greendupabn2=greendupabn2+2
+                elif item < -cutoff2 and previtem < -cutoff2:
+                    greendelabn2=greendelabn2+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 or item < -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    greenabn2=greenabn2+1
+                elif item > cutoff2 and previtem < cutoff2:
+                    greendupabn2=greendupabn2+1
+                elif item <-cutoff2 and previtem >-cutoff2:
+                    greendelabn2=greendelabn2+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
                     pass
@@ -306,26 +351,28 @@ class analyse_the_array():
             else:
                 previtem=float(redZscores[i-1])
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2 or item < -cutoff2 and previtem < -cutoff2:
-                    greenabn2=greenabn2+2
+                if item > cutoff2 and previtem > cutoff2:
+                    greendupabn2=greendupabn2+2
+                elif item < -cutoff2 and previtem < -cutoff2:
+                    greendelabn2=greendelabn2+2
                 #if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff or item < -cutoff and previtem < cutoff and previtem > -cutoff:
-                    greenabn2=greenabn2+1
+                elif item > cutoff2 and previtem < cutoff2:
+                    greendupabn2=greendupabn2+1
+                elif item <-cutoff2 and previtem >-cutoff2:
+                    greendelabn2=greendelabn2+1
                 #if probe is normal and the previous probe was abnormal give a score of 0 (pass)
                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
                     pass
-                #if probe is normal and previous probe is also normal give a score of 0
+                #if probe is normal and previous probe is also normal give a score of 0(pass)
                 elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
                     pass
                 else:
                     pass
-   
- 
-        # Insert this into the relevant analysis table
+        
          
         #SQL statement to insert of update williams_analysis table
         UpdateAnalysisTable1="""insert ignore into """
-        UpdateAnalysisTable2=""" set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s"""
+        UpdateAnalysisTable2=""" set ArrayID=%s,Num_of_probes=%s,Green_del_probes_90=%s,Green_del_probes_95=%s,Red_del_probes_90=%s,Red_del_probes_95=%s,Green_dup_probes_90=%s,Green_dup_probes_95=%s,Red_dup_probes_90=%s,Red_dup_probes_95=%s,GreenDelRegionScore90=%s,GreenDelRegionScore95=%s,GreenDupRegionScore90=%s,GreenDupRegionScore95=%s,RedDelRegionScore90=%s,RedDelRegionScore95=%s,RedDupRegionScore90=%s,RedDupRegionScore95=%s"""
         #UpdateAnalysisTable="""update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
         combined_query=UpdateAnalysisTable1+analysistable+UpdateAnalysisTable2
         #print combined_query
@@ -335,7 +382,8 @@ class analyse_the_array():
         try:
             #use first for update query. second for insert           
             #cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
-            cursor.execute(combined_query,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes_2_analyse),str(arrayID),str(green90+green95),str(green95),str(red90+red95),str(red95)))
+                                                                                                                                                                                                                                                                                
+            cursor.execute(combined_query,(str(arrayID),str(no_of_probes_2_analyse),str(greendel90+greendel95),str(greendel95),str(reddel90+reddel95),str(reddel95),str(greendup90+greendup95),str(greendup95),str(reddup95+reddup90),str(reddup95),str(greendelabn),str(greendelabn2),str(greendupabn),str(greendupabn2),str(reddelabn),str(reddelabn2),str(reddupabn),str(reddupabn2)))
             db.commit()
             print "inserted into analysis table: "+str(analysistable)
         except MySQLdb.Error, e:
@@ -345,7 +393,10 @@ class analyse_the_array():
         finally:
             db.close()
 
+if __name__=="__main__":
 
-#initialise program
-GetROI().GetROI()        
-print "all done"
+    #initialise program   
+    for i in range(1,191):
+        GetROI().GetROI(i)
+    #print "ROI file all done. now comparing hyb partners"  
+    #Get_Analysis_tables().Tables()

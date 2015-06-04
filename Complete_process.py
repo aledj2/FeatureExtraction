@@ -11,10 +11,10 @@ import MySQLdb
 import math
 import os
 from datetime import datetime
-import complete_Perform_ZTest
-import re
-import Complete_calculate_average_sigInt_and_SD
-import analyse_multiple_ROI
+from complete_Perform_ZTest import CalculateLogRatios 
+#import re
+#import Complete_calculate_average_sigInt_and_SD
+#from analyse_multiple_ROI import GetROI
 #from time import strftime
 
 
@@ -22,7 +22,7 @@ class Getfile():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
     #chosenfolder = "C:\Users\Aled\Google Drive\MSc project\\feFiles" #PC
-    chosenfolder="F:\\arrayfiles\\250515"#USB
+    chosenfolder="F:\\arrayfiles\\to add"#USB
     
     # Create an array to store all the files in. 
     chosenfiles=[]
@@ -164,53 +164,10 @@ class ins_stats():
           
 class runquery:
     def runquery(self,features,arrayID):
-        #connect to db
-        #db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
-        
-#         features=features
-#         #ROI_Key=16
-#         #cursor=db.cursor()
-#         get_probes="""select probeorder.ProbeName from probeorder"""
-#         #print get_probes
-#         try:
-#             db.query(get_probes)
-#             queryresult=db.use_result()
-#             #print"query executed"
-#         except:
-#             db.rollback
-#             print "fail - unable to enter retrieve probes"
-#         db.close
-#          
-#         desiredprobes=()
-#         desiredprobes=queryresult.fetch_row(0,0)
-#         #print "desired = " + str(desiredprobes)
-#         #print "desired = " + str(desiredprobes[0])
-#         #print features[0][6]
-#         
-#         captured_features=[]
-#         #print features
-#         for i in features:
-#             #print i[6]
-#             #print desiredprobes
-#             for j in desiredprobes:
-#                 j=str(j)
-#                 j=j.replace(',','')
-#                 j=j.replace('(','')
-#                 j=j.replace(')','')
-#                 j=j.replace('\'','')
-#                 if i[6] == j:
-#                     #print j
-#                     #print i[6]
-#                     captured_features.append(i)
-#                     #print i[6]
-#                 else:
-#                     pass
-#                     #print "probe not in williams"
-#         #print captured_features
+
         arrayID=arrayID
         captured_features=features
-        
-        
+                
         run_ins_statements().run_ins_statements(captured_features, arrayID)
         
 class run_ins_statements:
@@ -348,13 +305,13 @@ class create_ins_statements():
                 #Add the insert statement name into a list for use below
                 self.insertstatementnames.append(insnumberforlist)
  
- 
-class insert_features:
+                
+class insert_features(object):
     #from run_ins_statements give the dictionary of insert statements and list of insert sequence names 
     def insert_features(self,insertstatements,insertstatementnames,arrayID):
         insertstatements=insertstatements
         insertstatementnames=insertstatementnames  
-         
+               
         # n is a counter if want to print out progress
         n=0
         #for each element (statement name) in the insstatementnames list pull out the corresponding sqlstatement from the dictionary and execute the sql insert 
@@ -383,32 +340,35 @@ class insert_features:
         extractData.features=[]    
         
         #create an array for list of array_IDs
-        arrayIDlist=[]
-        arrayIDlist.append(arrayID)
+        array_ID=arrayID
+        #print str(arrayID) + " is array ID in insert_features"
+        #self.arrayIDlist.append(arrayID)
+        #return arrayIDlist
+        print "performing Z score analysis for array "+str(array_ID)
+        x= datetime.now()
+        print x.strftime('%Y_%m_%d_%H_%M_%S')
+        CalculateLogRatios().CalculateLogRatios(array_ID)
+        
+if __name__=="__main__":
 
-#for each file in the chosenfile array enter this into the feedfile function in extractData class
-files=Getfile.chosenfiles
-exData=extractData()
-no_of_files=len(files)
-n=1
-for i in files:
-    print "inserting file "+str(i)+", file "+str(n)+" of "+str (no_of_files)
-    exData.feedfile(i)
-    print "file done"
-    n=n+1
-print "all inserted successfully"
+    #for each file in the chosenfile array enter this into the feedfile function in extractData class
+    files=Getfile.chosenfiles
+    exData=extractData()
+    no_of_files=len(files)
+    n=1
+    for i in files:
+        print "inserting file "+str(i)+", file "+str(n)+" of "+str (no_of_files)
+        exData.feedfile(i)
+        print "file done"
+        #print a
+        n=n+1
+    print "all inserted successfully"
+    
+    #if needed populate the reference values table
+    #Complete_calculate_average_sigInt_and_SD.CalculateReferenceRange().CalculateReference()
 
-
-#if needed populate the reference values table
-#Complete_calculate_average_sigInt_and_SD.CalculateReferenceRange().CalculateReference()
-
-#get a list of all the array IDs just inserted to apss to perform z score script
-arraylist=insert_features.insert_features.arrayIDlist
-for i in arraylist:
-        complete_Perform_ZTest.CalculateLogRatios().CalculateLogRatios(i)
-
-#perform ROI analysis
-analyse_multiple_ROI.GetROI().GetROI()
+    #perform ROI analysis
+    #GetROI().GetROI()
         
 # create variable for log file
 logfilefolder= createoutputfile.outputfolder

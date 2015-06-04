@@ -175,6 +175,9 @@ class Analyse_array():
     def feed_create_ins_statements(self,features_listin,arrayID):      
         '''This function takes the list of features,breaks it into 10 equal chunks and then passes this to the create_ins_statement function
         10 insert statements was deemed quicker than the creation of a csv file or a single insert statement''' 
+        
+        print "creating insert statements"
+        
         # create a copy of features array 
         all_features=list(features_listin)
              
@@ -226,7 +229,7 @@ class Analyse_array():
         #create a copy of the insert statement
         insstatement=self.baseinsertstatement
         
-        print "creating insert statements"
+        
          
         #take the allfeatures array and array ID that is given to module  
         all_features=allfeatures
