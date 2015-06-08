@@ -41,7 +41,7 @@ class GetROI():
         #so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
         
         #print "starting ROI"
-        x= datetime.now()
+        #x= datetime.now()
         #print x.strftime('%Y_%m_%d_%H_%M_%S')
         #print ROIqueryresult
         number_of_ROI=len(ROIqueryresult)
