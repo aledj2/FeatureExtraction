@@ -17,7 +17,6 @@ import MySQLdb
 import math
 import os
 from datetime import datetime
-import time
 
 class Analyse_array():
     def __init__(self):
@@ -26,7 +25,7 @@ class Analyse_array():
     #specify the folder.  
     #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
     #chosenfolder = "C:\Users\Aled\Google Drive\MSc project\\feFiles" #PC
-    chosenfolder="F:\\fefiles\\1"#USB
+    chosenfolder="F:\\fefiles"#USB
     
     # Create an array to store all the files in.
     chosenfiles=[]
@@ -43,16 +42,15 @@ class Analyse_array():
     
     def get_list_of_target_probes(self):
         '''This module reads a file with all the probes which fall within a ROI and fill the list_of_probes.'''
+        #open file
         fileofprobes=open("C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes.csv",'r')
-       
+       #append to array after removing newline
         for line in fileofprobes:
             self.list_of_probes.append(line.rstrip())
-        #print self.list_of_probes
         
         
     def read_file(self,filein):
         ''' This function recieves a FE file name (one at a time), opens it, adds information/selected probes to lists and passes these to functions which perform insert statements '''            
-        print "open file "+str(datetime.now().strftime('%H %M %S'))
         
         #combine the specified folder and one file from the for loop which instigates this program   
         file2open= self.chosenfolder+"\\"+filein
@@ -116,7 +114,6 @@ class Analyse_array():
        
     def insert_feparam(self,feparam_listin,stats_listin,features_listin,filein):
         ''' this function receives arrays containing all of the information within a FE file. This function inserts into feparam table and creates a unique Array_ID'''
-        #self.start_time=datetime.now()
         #need to create a copy of FEPARAMS from above to modify (using list()).
         allfeparam=list(feparam_listin)
         
@@ -136,12 +133,15 @@ class Analyse_array():
         cursor=db.cursor()
         #sql statement
         feparam_ins_statement="""insert into feparam (FileName,ProtocolName) values (%s,%s)"""
+        time_ins1="""insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
         try:           
             cursor.execute(feparam_ins_statement,(str(filename),allfeparam[0]))
             db.commit()
             #print "feparam inserted OK"
             #return the arrayID for the this array (automatically retrieve the Feature_ID from database) 
             arrayID=cursor.lastrowid
+            cursor.execute(time_ins1,(str(arrayID),str(datetime.now().strftime('%H:%M:%S'))))
+            db.commit()
         except MySQLdb.Error, e:
             db.rollback()
             print "fail - unable to enter feparam information"
@@ -191,8 +191,6 @@ class Analyse_array():
     def feed_create_ins_statements(self,features_listin,arrayID):      
         '''This function takes the list of features,breaks it into 10 equal chunks and then passes this to the create_ins_statement function
         10 insert statements was deemed quicker than the creation of a csv file or a single insert statement''' 
-        
-        #print "creating insert statements"
         
         # create a copy of features array 
         all_features=list(features_listin)
@@ -244,8 +242,6 @@ class Analyse_array():
         """This takes the start and stop of each subset and loops through the all_features list modifying and appending to a SQL statement and then adding to dictionary """
         #create a copy of the insert statement
         insstatement=self.baseinsertstatement
-        
-        
          
         #take the allfeatures array and array ID that is given to module  
         all_features=allfeatures
@@ -343,12 +339,15 @@ class Analyse_array():
             db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
             cursor=db.cursor()
             
+            update_ins_stats="""update insert_stats set ins_time=%s where array_ID=%s"""
             #using the insertstatement names from the list pull out each sqlstatement from the dictionary and execute sql command 
             try:
                 cursor.execute(insertstatements[i])
                 db.commit()
                 #print "inserted statement " +str(n+1)+" of 10"
+                cursor.execute(update_ins_stats,(str(datetime.now().strftime('%H:%M:%S')),str(arrayID)))
                 n=n+1
+                db.commit()
             except MySQLdb.Error, e:
                 db.rollback()
                 print "fail - unable to enter feature information query "+str(n+1)+" of 10"
@@ -356,8 +355,6 @@ class Analyse_array():
                     raise
             finally:
                 db.close()
-        
-        print "Inserted array "+str(datetime.now().strftime('%H %M %S'))
         
         #array has been fully inserted. Now perform Z score analysis
         array_ID=arrayID
@@ -369,47 +366,59 @@ class Analyse_array():
         
         #capture the array_ID
         arrayID2test=arrayID
-        #print "calculating log ratios for "+str(arrayID2test)
-
-        
+                
         #open connection to database and run SQL insert statement
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
         
+        #statement to update the target_features2 table to populate the probekey (numeric to speed up)
         update_probeKey="""update target_features2, probeorder set target_features2.probekey=probeorder.probekey where probeorder.probename=target_features2.probename"""
         
         #SQL statement which captures or creates the values required
-        UpdateLogRatio="""update target_features2 features, referencevalues set GreenLogratio=log2(features.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(features.rprocessedsignal/referencevalues.rsignalint),features.rReferenceAverageUsed = referencevalues.rSignalInt,features.gReferenceAverageUsed=referencevalues.gSignalInt, features.rReferenceSD=referencevalues.rSignalIntSD, features.gReferenceSD=referencevalues.gSignalIntSD, features.greensigintzscore=((features.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),features.redsigintzscore=((features.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where features.ProbeName=referencevalues.ProbeName and features.controltype=0 and features.array_ID=%s"""
+        UpdateLogRatio="""update target_features2 t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
+        #statement to populate ins_stats table
+        update_ins_stats="""update insert_stats set Zscore_time=%s where array_ID=%s"""
         try:           
             cursor.execute(update_probeKey)
-            
-            #print "updated probekeys"
+            db.commit()
             cursor.execute(UpdateLogRatio,str((arrayID2test)))
             db.commit()
-            #print "updated Z scores for array ID: " + str(arrayID2test)
-
+            cursor.execute(update_ins_stats,(str(datetime.now().strftime('%H:%M:%S')),str(arrayID2test)))
+            db.commit()
         except MySQLdb.Error, e:
             db.rollback()
             if e[0]!= '###':
                 raise
         finally:
-            db.close()
+            #not closed due to following statements
+            #db.close()
+            pass
         
-        print "calculated log ratios "+str(datetime.now().strftime('%H %M %S'))
         
         #feed the updated arrayID to getROI to populate the analysis tables
         Analyse_array().GetROI(arrayID2test)
         
-        self.Anal_time=datetime.now()
-        print "Analysed array "+str(datetime.now().strftime('%H %M %S'))
+        #statements to update the ins_stats table. the first populates the analysis end time and the second changes all the columns into time taken as opposed to time stamps. NB the order of the column updates is important!
+        update_ins_stats2="""update insert_stats set Analysis_end_time=%s where array_ID=%s"""
+        update_ins_stats3="""update insert_stats set Analysis_end_time= timediff(Analysis_end_time ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time)  where array_ID=%s"""
+        try:           
+            cursor.execute(update_ins_stats2,(str(datetime.now().strftime('%H:%M:%S')),str(arrayID2test)))
+            db.commit()
+            cursor.execute(update_ins_stats3,(str(arrayID2test)))
+            db.commit()
+        except MySQLdb.Error, e:
+            db.rollback()
+            if e[0]!= '###':
+                raise
+        finally:
+            db.close()        
         
-        
-    def GetROI (self,arrayID):
+    def GetROI (self,array_ID):
         '''This function creates a list of all the analysis tables which are to be updated. 
         For each table the get Z scores function is called.
         Once all the tables have been updated the function which compares the hyb partners is called.
         '''
-                
+                    
         #open connection to database and run SQL select statement
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
@@ -430,25 +439,15 @@ class Analyse_array():
         
         #should return a list of ((analysistable,ROI_ID),(...))
         #so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
+
         
-        array_ID=arrayID
-        #print "got list of analysis tables to insert into for arrayID "+str(array_ID)
-        #x= datetime.now()
-        #print x.strftime('%Y_%m_%d_%H_%M_%S')
-        
-        # for each table call get_Z_Scores function 
+        # for each ROI call get_Z_Scores function 
         for i in range(len(ROIqueryresult)):
             Analyse_array().get_Z_scores(ROIqueryresult[i][0],ROIqueryresult[i][1],array_ID)
-            
-        #once all the roi have been analysed call the function which compares the hyb partners
-        #for i in range(len(ROIqueryresult)):
-            #Analyse_array().CompareHybPartners(ROIqueryresult[i][0],array_ID)
+
         
     def get_Z_scores(self, analysistable,ROI_ID,array_ID):
         '''This function finds all the Z scores for any probes within this roi for this array and passes into the function which analyses the results'''
-        
-        array_ID=array_ID
-        #print "adding "+str(array_ID)+ " into "+analysistable
         
         # select the arrayID, green and red Z score for all probes within the ROI for this array. 
         getZscorespart1="""select f.array_ID, f.greensigintzscore, f.redsigintzscore from target_features2 f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
@@ -463,7 +462,6 @@ class Analyse_array():
         try:
             cursor.execute(combinedquery)
             Zscorequeryresult=cursor.fetchall()
-            #print "retrieved Z scores for " + analysistable
         except MySQLdb.Error, e:
             db.rollback()
             print "fail - unable to retrieve z scores"
@@ -481,7 +479,8 @@ class Analyse_array():
         for i in range (len(Zscorequeryresult)):                         
             listofgreenZscores.append(Zscorequeryresult[i][1])
             listofredZscores.append(Zscorequeryresult[i][2])
-             
+        
+        # call analyse probe z scores
         Analyse_array().analyse_probe_Z_scores(array_ID,listofgreenZscores,listofredZscores,analysistable,ROI_ID)
             
 
@@ -739,21 +738,25 @@ class Analyse_array():
                 else:
                     pass
         
+        #create variables which can be passed to the next function to save another query.
+        g_del_90=greendel90+greendel95
+        r_del_90=reddel90+reddel95
+        g_dup_90=greendup90+greendup95
+        r_dup_90=reddup95+reddup90
          
         #SQL statement to insert of analysis table
         UpdateAnalysisTable1="""insert into """
-        UpdateAnalysisTable2=""" set ArrayID=%s,ROI_ID=%s,Num_of_probes=%s,Green_del_probes_90=%s,Green_del_probes_95=%s,Red_del_probes_90=%s,Red_del_probes_95=%s,Green_dup_probes_90=%s,Green_dup_probes_95=%s,Red_dup_probes_90=%s,Red_dup_probes_95=%s,GreenDelRegionScore90=%s,GreenDelRegionScore95=%s,GreenDupRegionScore90=%s,GreenDupRegionScore95=%s,RedDelRegionScore90=%s,RedDelRegionScore95=%s,RedDupRegionScore90=%s,RedDupRegionScore95=%s"""
+        UpdateAnalysisTable2=""" set Array_ID=%s,ROI_ID=%s,Num_of_probes=%s,Green_del_probes_90=%s,Green_del_probes_95=%s,Red_del_probes_90=%s,Red_del_probes_95=%s,Green_dup_probes_90=%s,Green_dup_probes_95=%s,Red_dup_probes_90=%s,Red_dup_probes_95=%s,GreenDelRegionScore90=%s,GreenDelRegionScore95=%s,GreenDupRegionScore90=%s,GreenDupRegionScore95=%s,RedDelRegionScore90=%s,RedDelRegionScore95=%s,RedDupRegionScore90=%s,RedDupRegionScore95=%s"""
         
         #UpdateAnalysisTable="""update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
         combined_query=UpdateAnalysisTable1+analysistable+UpdateAnalysisTable2
-        #print combined_query
+        
         #open connection to database and run SQL update/ins statement
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
         try:
             #use first for update query. second for insert           
-            #cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
-                                                                                                                                                                                                                                                                                
+            #cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update                                                                                                                                                                                                                                                                     
             cursor.execute(combined_query,(str(arrayID),str(ROI_ID),str(no_of_probes_2_analyse),str(greendel90+greendel95),str(greendel95),str(reddel90+reddel95),str(reddel95),str(greendup90+greendup95),str(greendup95),str(reddup95+reddup90),str(reddup95),str(greendelabn),str(greendelabn2),str(greendupabn),str(greendupabn2),str(reddelabn),str(reddelabn2),str(reddupabn),str(reddupabn2)))
             db.commit()
             #print "inserted into analysis table: "+str(analysistable)
@@ -763,47 +766,27 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-
-        Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID)
         
-    def CompareHybPartners (self,table,arrayID,ROI_ID): 
-        array=arrayID
-        analysistable=table
-        ROI_ID=ROI_ID
-    
-    
+        # call compare hyb partner function
+        Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse)
+        
+    def CompareHybPartners (self,table,arrayID,ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse): 
+        '''this module takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour'''
+        
         #create connection
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
-        
-        analysis_query1="""select Green_del_probes_90,Green_dup_probes_90,red_del_probes_90,red_dup_probes_90,Num_of_probes from """
-        analysis_query2=""" where arrayID = """
-        analysis_query3=""" and ROI_ID = """ 
-        combinedquery=analysis_query1+analysistable+analysis_query2+str(array)+analysis_query3+str(ROI_ID)
-         
-        try:
-            cursor.execute(combinedquery)
-            result=cursor.fetchall()
-        except MySQLdb.Error, e:
-            db.rollback()
-            print "fail - unable to access ROI "+ str(ROI_ID) 
-            if e[0]!= '###':
-                raise
-        finally:
-            db.close()
-        #produces a tuple where [0][0] is green del probes,[0][1]is Green_dup_probes_90, [0][2]red_del_probes_90,[0][3]red_dup_probes_90,[0][4]Num_of_probes 
-        
-        
+           
         #insert statement
-        ins_to_shared_imb ="""insert Shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup) values (%s,%s,%s,%s,%s)"""
+        ins_to_shared_imb ="""insert Shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup) values (%s,%s,%s,%s,%s,%s)"""
         
         #Normal=True
         # if both red and green have more than half the probes abnormally low for the region say so
-        if result[0][0] > (0.5 * result[0][4]) and result[0][2] > (0.5*result[0][4]) and result[0][4] >10:
+        if g_del_90 > (0.5 * no_of_probes_2_analyse) and r_del_90 > (0.5*no_of_probes_2_analyse) and no_of_probes_2_analyse >10:
             try:
-                cursor.execute(ins_to_shared_imb,str(array),str(ROI_ID),str(result[0][2]),str(result[0][0]),str(result[0][4]),str(-1))
+                cursor.execute(ins_to_shared_imb,(str(arrayID),str(ROI_ID),str(r_del_90),str(g_del_90),str(no_of_probes_2_analyse),str(-1)))
                 db.commit()
-                print "imbalance inserted to Shared_Imbalance"
+                #print "imbalance inserted to Shared_Imbalance"
             except MySQLdb.Error, e:
                 db.rollback()
                 print "fail - unable to update shared_imbalances table" 
@@ -812,22 +795,15 @@ class Analyse_array():
             finally:
                 db.close()
 
-            #Normal = False 
-            #print "Both Hyb partners in array "+str(array)+" have an imbalance in ROI" + str(ROI_ID)
-            #print "GREEN probes deleted (90%) "+str(result[0][0])
-            #print "RED probes deleted (90%) "+str (result[0][2])
-            #print "total number of probes in region= "+str(result[0][4])
-
         else:
-            #print "ok"
             pass
         
         # if both red and green have more than half the probes abnormally high for the region say so
-        if result[0][1] > (0.5 * result[0][4]) and result[0][3] > (0.5*result[0][4]) and result[0][4] >10:
+        if g_dup_90 > (0.5 * no_of_probes_2_analyse) and r_dup_90 > (0.5*no_of_probes_2_analyse) and no_of_probes_2_analyse >10:
             try:
-                cursor.execute(ins_to_shared_imb,str(array),str(ROI_ID),str(result[0][3]),str(result[0][1]),str(result[0][4]),str(1))
+                cursor.execute(ins_to_shared_imb,(str(arrayID),str(ROI_ID),str(r_dup_90),str(g_dup_90),str(no_of_probes_2_analyse),str(1)))
                 db.commit()
-                print "imbalance inserted to Shared_Imbalance"
+                #print "imbalance inserted to Shared_Imbalance"
             except MySQLdb.Error, e:
                 db.rollback()
                 print "fail - unable to update shared_imbalances table" 
@@ -835,20 +811,11 @@ class Analyse_array():
                     raise
             finally:
                 db.close()
-               
-
-#             #Normal=False 
-#             print "Both Hyb partners in "+str(array)+" have an imbalance in ROI" + str(ROI_ID)
-#             print "GREEN probes gain (90%) "+str(result[0][1])
-#             print "RED probes gain (90%) "+str (result[0][3])
-#             print "total number of probes in region = "+str(result[0][4])
         else:
-            #print "ok"
+            
             pass
         
-        #if Normal is True:
-            #print "no shared duplications on array " + str(array)
-            
+
 #execute the program
 if __name__=="__main__":
     #create a list of files
