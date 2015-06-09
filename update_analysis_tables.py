@@ -47,7 +47,7 @@ class Gettables():
             completecreate=createstatement1+tablename+createstatement2
             try:
                 #cursor.execute(completetruncate)
-                cursor.execute(completedrop)
+                #cursor.execute(completedrop)
                 cursor.execute(completecreate)
                 print tablename+ " dropped and recreated"
             except:

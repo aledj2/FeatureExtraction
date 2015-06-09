@@ -22,8 +22,8 @@ class Analyse_array():
         pass
     
     #specify the folder.  
-    #chosenfolder = 'C:\Users\user\workspace\Parse_FE_File' #laptop
-    #chosenfolder = "C:\Users\Aled\Google Drive\MSc project\\feFiles" #PC
+    #chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
+    #chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\feFiles" #PC
     chosenfolder="F:\\fefiles"#USB
     
     # Create an array to store all the files in.
@@ -31,21 +31,19 @@ class Analyse_array():
        
     def get_files(self):    
         '''loops through the specified folder (above) and adds any .txt files to this array(looking for all FE files)''' 
+        #for txt file in folder add to list 
         for file in os.listdir(self.chosenfolder):
             if file.endswith(".txt"):
-                #print (file)
                 self.chosenfiles.append(file)
     
-    #create an empty array for all the probes that are within ROI
+    #create an empty array for all the probes that are within ROI (global)
     list_of_probes=[]
-    
-
-    
+        
     def get_list_of_target_probes(self):
         '''This module reads a file with all the probes which fall within a ROI and fill the list_of_probes.'''
-        #open file
+        #open file of target probes
         fileofprobes=open("C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes.csv",'r')
-        #append to array after removing newline
+        #append to list after removing newline
         for line in fileofprobes:
             self.list_of_probes.append(line.rstrip())
         
@@ -318,19 +316,18 @@ class Analyse_array():
         # n is a counter to print out progress
         n=0
          
-        #for each element (statement name) in the insstatementnames list pull out the corresponding sqlstatement from the dictionary and execute the sql insert 
-        
+        #for each element in the dict pull out the value(sqlstatement) execute
         for i in self.insertstatements:
+            
             #connect to db and create cursor
             db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
             cursor=db.cursor()
-             
+            
+            #ins stats update statement 
             update_ins_stats="""update insert_stats set ins_time=%s where array_ID=%s"""
-            #using the insertstatement names from the list pull out each sqlstatement from the dictionary and execute sql command 
             try:
                 cursor.execute(self.insertstatements[i])
                 db.commit()
-                #print "inserted statement " +str(n+1)+" of 10"
                 cursor.execute(update_ins_stats,(str(datetime.now().strftime('%H:%M:%S')),str(Array_ID)))
                 n=n+1
                 db.commit()
@@ -346,22 +343,20 @@ class Analyse_array():
         Analyse_array().CalculateLogRatios(Array_ID)
          
      
-    def CalculateLogRatios (self,arrayID):
+    def CalculateLogRatios (self,arrayID2test):
         '''this function receives the arrayID of the recently inserted FEfile and uses the reference values table to calculate the log ratios and Z scores. 
         When complete the process of populating the analysis tables is started.'''
-         
-        #capture the array_ID
-        arrayID2test=arrayID
                  
         #open connection to database and run SQL insert statement
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
          
-        #statement to update the target_features2 table to populate the probekey (numeric to speed up)
+        #statement to update the target_features2 table to populate the probekey (numeric keys to speed up subsequent steps)
         update_probeKey="""update target_features2, probeorder set target_features2.probekey=probeorder.probekey where probeorder.probename=target_features2.probename"""
          
         #SQL statement which captures or creates the values required
         UpdateLogRatio="""update target_features2 t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
+        
         #statement to populate ins_stats table
         update_ins_stats="""update insert_stats set Zscore_time=%s where array_ID=%s"""
         try:           
@@ -376,16 +371,20 @@ class Analyse_array():
             if e[0]!= '###':
                 raise
         finally:
-            #not closed due to following statements
-            #db.close()
-            pass
+            db.close()
+            #pass
          
         #feed the updated arrayID to getROI to populate the analysis tables
         Analyse_array().GetROI(arrayID2test)
-         
+        
+        #open connection to database and run SQL insert statement
+        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
+        cursor=db.cursor() 
+        
         #statements to update the ins_stats table. the first populates the analysis end time and the second changes all the columns into time taken as opposed to time stamps. NB the order of the column updates is important!
         update_ins_stats2="""update insert_stats set Analysis_end_time=%s where array_ID=%s"""
         update_ins_stats3="""update insert_stats set Analysis_end_time= timediff(Analysis_end_time ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time),TotalTime= addtime(Ins_time,Zscore_time), TotalTime=addtime(totaltime,Analysis_end_time) where array_ID=%s"""
+        
         try:           
             cursor.execute(update_ins_stats2,(str(datetime.now().strftime('%H:%M:%S')),str(arrayID2test)))
             db.commit()
@@ -402,8 +401,7 @@ class Analyse_array():
         '''This function creates a list of all the analysis tables which are to be updated. 
         For each table the get Z scores function is called.
         Once all the tables have been updated the function which compares the hyb partners is called.
-        '''
-                     
+        '''       
         #open connection to database and run SQL select statement
         db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
         cursor=db.cursor()
@@ -425,7 +423,6 @@ class Analyse_array():
         #should return a list of ((analysistable,ROI_ID),(...))
         #so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
  
-         
         # for each ROI call get_Z_Scores function 
         for i in range(len(ROIqueryresult)):
             Analyse_array().get_Z_scores(ROIqueryresult[i][0],ROIqueryresult[i][1],array_ID)
@@ -472,14 +469,7 @@ class Analyse_array():
     def analyse_probe_Z_scores (self,arrayID,greenZscores,redZscores,analysistable,ROI_ID):           
         '''this function recieves an array of z scores for red and green for a single roi. 
         The number of probes classed as abnormal are counted and passed to XX which inserts this into the analysis table'''
-         
-        #capture incoming variables
-        arrayID=arrayID
-        greenZscores=greenZscores
-        redZscores=redZscores
-        analysistable=analysistable
-        ROI_ID=ROI_ID
- 
+
         #enter the z score for 90 and 95%
         cutoff90=1.645
         cutoff95=1.95
