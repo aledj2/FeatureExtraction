@@ -6,13 +6,16 @@ Created on 9 Jun 2015
 import unittest
 import nose
 from all_combined_one_analysis_table_selected_probes_inserted_shared_imbalances import Analyse_array as all_combined
+import MySQLdb
 
 class Test():
     def test_get_files(self):
         all_combined.chosenfolder="C:\\Users\\Aled\\Google Drive\\MSc project\\unittest"
         all_combined().get_files()
+        
         try:
             assert len(all_combined.chosenfiles) ==1
+            assert all_combined.chosenfiles[0]=="252846911042_S01_Guys121919_CGH_1100_Jul11_2_2_3.txt"
             print "get files is ok"
         except:
             print "len(all_combined.chosenfiles) != 1"
@@ -28,39 +31,103 @@ class Test():
             print "error len(all_combined.list_of_probes) != 8391"
     
     def check_read_file(self):
-        all_combined.database=unittest
+        all_combined.database="unittest"
+        
         for i in all_combined.chosenfiles:
+            all_combined().read_file(i)
+            
             try:
-                assert all_combined.read_file=="C:\\Users\\Aled\\Google Drive\\MSc project\\unittest\\252846911042_S01_Guys121919_CGH_1100_Jul11_2_2_3.txt"
-                print "file2open is correct"
+                #check the FEPARAMs is read correctly
+                print all_combined.read_file.feparam
+                assert len(all_combined.read_file.feparam)==39
             except:
-                print "file2open is not correct "#+all_combined.read_file
+                print "len(FEPARAM) != 39"
+            try:
+                assert all_combined.read_file.feparam[1]=="Guys121919_CGH_1100_Jul11_2 (Editable)"
+            except:
+                print "feparam[1] not correct"
+            try:
+                #check stats row
+                assert len(all_combined.read_file.stats)==190
+            except:
+                print "len(stats) != 190"
+            try:
+                assert all_combined.read_file.stats[1]==5.84444
+            except:
+                print "stats[1] not correct"
+            try:
+                #assert number of columns of features and the number of probes are both correct 
+                assert len(split.all_combined.read_file.features)==43
+            except:
+                print "len(features) not 43"
+            try:        
+                assert len(all_combined.read_file.features)==46544
+            except:
+                print "num features not 46544"
         
         
+class wipe_db():
+    def truncate(self):
+        arrayID= 2
+
+        del1="""DELETE FROM `feparam` WHERE  `Array_ID`> %s"""
+        del2="""DELETE FROM `stats` WHERE  `Array_ID`> %s """
+        del3="""DELETE FROM `analysis_all` WHERE  `Array_ID`> %s"""
+        del4="""DELETE FROM `target_features2` WHERE  `Array_ID`> %s"""
+        del5="""DELETE FROM `insert_stats` WHERE  `Array_ID`> %s"""
+        del6="""DELETE FROM `shared_imbalances` WHERE  `Array_ID` >%s"""
         
+        #create connection
+        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="unittest")
+        cursor=db.cursor()
+        
+        try:
+            cursor.execute(del1,(arrayID))
+            db.commit()
+            print "feparam emptied"
+            cursor.execute(del2,(arrayID))
+            db.commit()
+            print "stats emptied"
+            cursor.execute(del3,(arrayID))
+            db.commit()
+            print "analysis_all emptied"
+            cursor.execute(del4,(arrayID))
+            db.commit()
+            print "target_features2 emptied"
+            cursor.execute(del5,(arrayID))
+            db.commit()
+            print "insert_stats emptied"
+            cursor.execute(del6,(arrayID))
+            db.commit()
+            print "shared imbalances emptied"
+        except MySQLdb.Error, e:
+            db.rollback()
+            print "fail" 
+            if e[0]!= '###':
+                raise
+        finally:
+            print "done"
+            db.close()
 if __name__=="__main__":
+    #empty db
+    wipe_db().truncate()
+    
     #test get_files
     Test().test_get_files()
     #test get target probes
     Test().test_get_target_probes() 
     #test check read file
     Test().check_read_file()
-    
+
     
     
     
 #     #FE file used is C:\Users\Aled\Google Drive\MSc project\unittest\252846911042_S01_Guys121919_CGH_1100_Jul11_2_2_3.txt
 #      
 # 
-#     #check the FEPARAMs is read correctly
-#     assert len(feparam)==39
-#     assert feparam[1]=="Guys121919_CGH_1100_Jul11_2 (Editable)"
-#     #check stats row
-#     assert len(stats)==190
-#     assert stats[1]==5.84444
-#     #assert number of columns of features and the number of probes are both correct 
-#     assert len(split.features)==43
-#     assert len(features)==46544
+
+
+
 #     
 #     #need to check what the first target probe is! and change accordingly
 #     assert features[0][6]==HsCGHBrightCorner and features[0][10]==0.03545998586

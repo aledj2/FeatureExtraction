@@ -53,7 +53,7 @@ class Analyse_array():
         
         #combine the specified folder and one file from the for loop which instigates this program   
         file2open= self.chosenfolder+"\\"+filein
-        return file2open  
+        
         #open file
         wholefile=open(file2open,'r')
          

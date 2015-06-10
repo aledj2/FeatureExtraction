@@ -4,14 +4,14 @@ Created on 8 Jun 2015
 @author: Aled
 '''
 import MySQLdb
-arrayID= 2
+arrayID= 0
 
-del1="""DELETE FROM `feparam` WHERE  `Array_ID`=%s"""
-del2="""DELETE FROM `stats` WHERE  `Array_ID`= %s """
-del3="""DELETE FROM `analysis_all` WHERE  `Array_ID`= %s"""
-del4="""DELETE FROM `target_features2` WHERE  `Array_ID`= %s"""
-del5="""DELETE FROM `insert_stats` WHERE  `Array_ID`= %s"""
-del6="""DELETE FROM `shared_imbalances` WHERE  `Array_ID` =%s"""
+del1="""DELETE FROM `feparam` WHERE  `Array_ID`>%s"""
+del2="""DELETE FROM `stats` WHERE  `Array_ID`> %s """
+del3="""DELETE FROM `analysis_all` WHERE  `Array_ID`> %s"""
+del4="""DELETE FROM `target_features2` WHERE  `Array_ID`> %s"""
+del5="""DELETE FROM `insert_stats` WHERE  `Array_ID`> %s"""
+del6="""DELETE FROM `shared_imbalances` WHERE  `Array_ID` >%s"""
 
 #create connection
 db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="unittest")
