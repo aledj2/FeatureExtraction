@@ -85,6 +85,7 @@ class Analyse_array():
                 pass
         #close file
         wholefile.close()
+        return feparam,stats,features
           
         # for each feature firstly remove the \n using pop to remove the last item, replace and then append
 
