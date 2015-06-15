@@ -67,7 +67,7 @@ class create_FE_files():
                 #print "copying and modifying file"
                 openfile=open(file2open,'r')
                 
-                newfilefolder=chosenfolder="F:\\fefiles\\newfiles\\"#USB
+                newfilefolder=chosenfolder="C:\\Users\\Aled\\Google Drive\\MSc project\\truepos\\"
                 redfile=open(newfilefolder+str(i)+"_RED.txt",'w')
                 greenfile=open(newfilefolder+str(i)+"_green.txt",'w')
                 for i, line in enumerate(openfile):

@@ -23,8 +23,8 @@ class Analyse_array():
     
     #specify the folder.  
     #chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
-    #chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\feFiles" #PC
-    chosenfolder="F:\\fefiles\\1"#USB
+    chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos" #PC
+    #chosenfolder="F:\\fefiles\\1"#USB
     
     # Create an array to store all the files in.
     chosenfiles=[]
@@ -35,6 +35,7 @@ class Analyse_array():
         for file in os.listdir(self.chosenfolder):
             if file.endswith(".txt"):
                 self.chosenfiles.append(file)
+        print len(self.chosenfiles)
     
     #create an empty array for all the probes that are within ROI (global)
     list_of_probes=[]
@@ -50,7 +51,7 @@ class Analyse_array():
         
     def read_file(self,filein):
         ''' This function recieves a FE file name (one at a time), opens it, adds information/selected probes to lists and passes these to functions which perform insert statements '''            
-        
+        print "starting file"
         #combine the specified folder and one file from the for loop which instigates this program   
         file2open= self.chosenfolder+"\\"+filein
         
@@ -85,7 +86,6 @@ class Analyse_array():
                 pass
         #close file
         wholefile.close()
-        return feparam,stats,features
           
         # for each feature firstly remove the \n using pop to remove the last item, replace and then append
 
@@ -138,41 +138,64 @@ class Analyse_array():
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
         #sql statement
-        feparam_ins_statement="""insert into feparam (FileName,ProtocolName) values (%s,%s)"""
-        time_ins1="""insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
+        existingfiles="select filename from feparam"
         try:           
-            cursor.execute(feparam_ins_statement,(str(filename),allfeparam[0]))
-            db.commit()
-            #print "feparam inserted OK"
-            #return the arrayID for the this array (automatically retrieve the Feature_ID from database) 
-            arrayID=cursor.lastrowid
-            cursor.execute(time_ins1,(str(arrayID),str(datetime.now().strftime('%H:%M:%S'))))
-            db.commit()
+            cursor.execute(existingfiles)
+            importedfilenames=cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
-            print "fail - unable to enter feparam information"
+            print "fail - unable to get4 list of imported filenames"
             if e[0]!= '###':
                 raise
         finally:
             db.close()
         
-        # pass to the ins stats function the stats_listin and features_listin (neither have been used in this module) and the array_ID created on the insert.
-        Analyse_array().insert_stats(stats_listin,arrayID,features_listin)
-
-
+        imported_files=[]
+        for i in importedfilenames:
+            imported_files.append(i[0])
+        
+        if filename in imported_files:
+            pass
+        else:    
+            #open connection to database and run SQL insert statement
+            db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
+            cursor=db.cursor()
+            #sql statement
+            feparam_ins_statement="""insert into feparam (FileName,ProtocolName) values (%s,%s)"""
+            time_ins1="""insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
+            try:           
+                cursor.execute(feparam_ins_statement,(str(filename),allfeparam[0]))
+                db.commit()
+                #print "feparam inserted OK"
+                #return the arrayID for the this array (automatically retrieve the Feature_ID from database) 
+                arrayID=cursor.lastrowid
+                cursor.execute(time_ins1,(str(arrayID),str(datetime.now().strftime('%H:%M:%S'))))
+                db.commit()
+            except MySQLdb.Error, e:
+                db.rollback()
+                print "fail - unable to enter feparam information"
+                if e[0]!= '###':
+                    raise
+            finally:
+                db.close()
+             
+            # pass to the ins stats function the stats_listin and features_listin (neither have been used in this module) and the array_ID created on the insert.
+            Analyse_array().insert_stats(stats_listin,arrayID,features_listin)
+ 
+ 
     def insert_stats(self,statslistin,Array_ID,features_listin):
         '''this function receives the arrays to be inserted into the stats and features tables and the arrayID. This module performs the insert to the stats table'''
-        
+         
         #create a copy of the stats array and arrayID.
         all_stats=list(statslistin)
-        
+         
         #remove final element and remove new line
         stats_with_newline=all_stats.pop()
         no_newline=stats_with_newline.replace('\n','')
         all_stats.append(no_newline)
         #need to remove the first entry in the list ('DATA') as this is not needed in db.#use remove to remove 'DATA' (remove function removes the first existence of that entry in the list)
         all_stats.remove('DATA')
-                             
+                              
         #open connection to database and run SQL insert statement
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
@@ -188,21 +211,21 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-
+ 
         # pass the features list and array ID into the run_ins statement module 
         Analyse_array().feed_create_ins_statements(features_listin,Array_ID)
-        
-        
+         
+         
     def feed_create_ins_statements(self,features_listin,Array_ID):      
         '''This function takes the list of features,breaks it into 10 equal chunks and then passes this to the create_ins_statement function
         10 insert statements was deemed quicker than the creation of a csv file or a single insert statement''' 
-        
+         
         # create a copy of features array 
         all_features=list(features_listin)
-             
+              
         #calculate number of features
         no_of_probes=len(all_features)
-                      
+                       
         # using the total number of probes break down into ten subsets. use math.ceil to round up to ensure all probes are included.    
         subset0=0
         subset1=int(math.ceil((no_of_probes/10)))
@@ -214,11 +237,11 @@ class Analyse_array():
         subset7=subset1*7
         subset8=subset1*8
         subset9=subset1*9
-        
-                  
+         
+                   
         #call the create_ins_statements function within this class and pass it the subset numbers, allfeatures array and array ID
         Analyse_array().create_ins_statements(subset0,subset1,all_features,Array_ID)
-        
+         
         Analyse_array().create_ins_statements(subset1,subset2,all_features,Array_ID)
         Analyse_array().create_ins_statements(subset2,subset3,all_features,Array_ID)
         Analyse_array().create_ins_statements(subset3,subset4,all_features,Array_ID)
@@ -228,107 +251,107 @@ class Analyse_array():
         Analyse_array().create_ins_statements(subset7,subset8,all_features,Array_ID)
         Analyse_array().create_ins_statements(subset8,subset9,all_features,Array_ID)
         Analyse_array().create_ins_statements(subset9,no_of_probes,all_features,Array_ID)
-          
+           
         # Once all SQL statements have been created feed these into the insert features module 
         Analyse_array().insert_features(Array_ID)
-    
-         
-    #An insert statement which is appended to in the below create_ins_statements function    
-    baseinsertstatement = "INSERT INTO target_features2(Array_ID,FeatureNum,Row,Col,SubTypeMask,ControlType,ProbeName,SystematicName,Chromosome,Start,Stop,PositionX,PositionY,LogRatio,LogRatioError,PValueLogRatio,gProcessedSignal,rProcessedSignal,gProcessedSigError,rProcessedSigError,gMedianSignal,rMedianSignal,gBGMedianSignal,rBGMedianSignal,gBGPixSDev,rBGPixSDev,gIsSaturated,rIsSaturated,gIsFeatNonUnifOL,rIsFeatNonUnifOL,gIsBGNonUnifOL,rIsBGNonUnifOL,gIsFeatPopnOL,rIsFeatPopnOL,gIsBGPopnOL,rIsBGPopnOL,IsManualFlag,gBGSubSignal,rBGSubSignal,gIsPosAndSignif,rIsPosAndSignif,gIsWellAboveBG,rIsWellAboveBG,SpotExtentX,gBGMeanSignal,rBGMeanSignal) values "
+     
           
+    #An insert statement which is appended to in the below create_ins_statements function    
+    baseinsertstatement = "INSERT INTO paramtest_features(Array_ID,FeatureNum,Row,Col,SubTypeMask,ControlType,ProbeName,SystematicName,Chromosome,Start,Stop,PositionX,PositionY,LogRatio,LogRatioError,PValueLogRatio,gProcessedSignal,rProcessedSignal,gProcessedSigError,rProcessedSigError,gMedianSignal,rMedianSignal,gBGMedianSignal,rBGMedianSignal,gBGPixSDev,rBGPixSDev,gIsSaturated,rIsSaturated,gIsFeatNonUnifOL,rIsFeatNonUnifOL,gIsBGNonUnifOL,rIsBGNonUnifOL,gIsFeatPopnOL,rIsFeatPopnOL,gIsBGPopnOL,rIsBGPopnOL,IsManualFlag,gBGSubSignal,rBGSubSignal,gIsPosAndSignif,rIsPosAndSignif,gIsWellAboveBG,rIsWellAboveBG,SpotExtentX,gBGMeanSignal,rBGMeanSignal) values "
+           
     #create a dictionary to hold the insert statements and a list of keys which can be used to pull out the insert statements   
     insertstatements={} 
-     
+      
     def create_ins_statements(self,start,stop,all_features,Array_ID):
         """This takes the start and stop of each subset and loops through the all_features list modifying and appending to a SQL statement and then adding to dictionary """
         #create a copy of the insert statement
         insstatement=self.baseinsertstatement        
-          
+           
         #loop through the all_features array in range of lines given 
         for i in range (start,stop):
-             
+              
             # ensure i is greater than or equal to start and not equal to stop to ensure no rows are called twice.
             if i >= start and i < stop-1:
-                 
+                  
                 #assign all elements for each row to line
                 line=all_features[i]
-                 
+                  
                 #remove the first column (DATA)
                 line.remove('DATA')
-                 
+                  
                 #As elements 5-7 are strings need to add quotations so SQL will accept it
                 probename="\""+line[5]+"\""
                 systematicname="\"" +line[6]+ "\""
-                      
+                       
                 #elements 7-9 are complicated as None needs changing to Null for the control probes which don't have genomic location (Can't do this when extending above)
                 if line[7] == None:
                     Chromosome="NULL"
                 else:
                     Chromosome="\""+line[7]+"\""
-                          
+                           
                 if line[8] == None:
                     line[8]="NULL"
                 else:
                     line[8]=line[8]
-                      
+                       
                 if line[9] == None:
                     line[9]="NULL"
                 else:
                     line[9]=line[9]
-                     
+                      
                 #use .join() to concatenate all elements into a string seperated by ','
                 to_add=",".join((str(Array_ID),str(line[0]),str(line[1]),str(line[2]),str(line[3]),str(line[4]),probename,systematicname,Chromosome,str(line[8]),str(line[9]),str(line[10]),str(line[11]),str(line[12]),str(line[13]),str(line[14]),str(line[15]),str(line[16]),str(line[17]),str(line[18]),str(line[19]),str(line[20]),str(line[21]),str(line[22]),str(line[23]),str(line[24]),str(line[25]),str(line[26]),str(line[27]),str(line[28]),str(line[29]),str(line[30]),str(line[31]),str(line[32]),str(line[33]),str(line[34]),str(line[35]),str(line[36]),str(line[37]),str(line[38]),str(line[39]),str(line[40]),str(line[41]),str(line[42]),str(line[43]),str(line[44])))
-                                      
+                                       
                 #Append the values to the end of the insert statement  
                 insstatement=insstatement+"("+to_add+")," 
-                  
+                   
             elif i == stop-1:
                 #for the final line (stop-1 as when using range the stop is not included) need to do the same as above but without the comma when appending to insert statement. 
                 line=all_features[i]
                 line.remove('DATA')
                 probename="\""+line[5]+"\""
                 systematicname="\"" +line[6]+ "\""
-                      
+                       
                 if line[7] == None:
                     Chromosome="NULL"
                 else:
                     Chromosome="\""+line[7]+"\""
-                          
+                           
                 if line[8] == None:
                     line[8]="NULL"
                 else:
                     line[8]=line[8]
-                      
+                       
                 if line[9] == None:
                     line[9]="NULL"
                 else:
                     line[9]=line[9]
-                          
+                           
                 to_add=",".join((str(Array_ID),str(line[0]),str(line[1]),str(line[2]),str(line[3]),str(line[4]),probename,systematicname,Chromosome,str(line[8]),str(line[9]),str(line[10]),str(line[11]),str(line[12]),str(line[13]),str(line[14]),str(line[15]),str(line[16]),str(line[17]),str(line[18]),str(line[19]),str(line[20]),str(line[21]),str(line[22]),str(line[23]),str(line[24]),str(line[25]),str(line[26]),str(line[27]),str(line[28]),str(line[29]),str(line[30]),str(line[31]),str(line[32]),str(line[33]),str(line[34]),str(line[35]),str(line[36]),str(line[37]),str(line[38]),str(line[39]),str(line[40]),str(line[41]),str(line[42]),str(line[43]),str(line[44])))
                 #No comma at end
                 insstatement=insstatement+"("+to_add+")"
-                  
+                   
                 #create a string which is ins and start number - this allows the insert statement to be named for use below
                 ins_number="ins"+ str(start)
-                
+                 
                 #Enter the insert statement into the dictionary setup above with key=insnumber and value the sql statement (insstatement)
                 self.insertstatements[ins_number]=insstatement
-
-
+ 
+ 
     def insert_features(self,Array_ID):
         '''Once the dictionary containing the features insert statements has been populated this function executes them.
         Once complete the arrayID is passed to the calculate log ratio function'''
-                
+                 
         # n is a counter to print out progress
         n=0
-         
+          
         #for each element in the dict pull out the value(sqlstatement) execute
         for i in self.insertstatements:
-            
+             
             #connect to db and create cursor
             db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
             cursor=db.cursor()
-            
+             
             #ins stats update statement 
             update_ins_stats="""update insert_stats set ins_time=%s where array_ID=%s"""
             try:
@@ -344,25 +367,25 @@ class Analyse_array():
                     raise
             finally:
                 db.close()
-                
+                 
         #array has been fully inserted. Now perform Z score analysis
         Analyse_array().CalculateLogRatios(Array_ID)
-         
-     
+          
+      
     def CalculateLogRatios (self,arrayID2test):
         '''this function receives the arrayID of the recently inserted FEfile and uses the reference values table to calculate the log ratios and Z scores. 
         When complete the process of populating the analysis tables is started.'''
-                 
+                  
         #open connection to database and run SQL insert statement
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
-         
-        #statement to update the target_features2 table to populate the probekey (numeric keys to speed up subsequent steps)
-        update_probeKey="""update target_features2, probeorder set target_features2.probekey=probeorder.probekey where probeorder.probename=target_features2.probename"""
-         
+          
+        #statement to update the paramtest_features table to populate the probekey (numeric keys to speed up subsequent steps)
+        update_probeKey="""update paramtest_features, probeorder set paramtest_features.probekey=probeorder.probekey where probeorder.probename=paramtest_features.probename"""
+          
         #SQL statement which captures or creates the values required
-        UpdateLogRatio="""update target_features2 t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
-        
+        UpdateLogRatio="""update paramtest_features t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
+         
         #statement to populate ins_stats table
         update_ins_stats="""update insert_stats set Zscore_time=%s where array_ID=%s"""
         try:           
@@ -379,18 +402,18 @@ class Analyse_array():
         finally:
             db.close()
             #pass
-         
+          
         #feed the updated arrayID to getROI to populate the analysis tables
         Analyse_array().GetROI(arrayID2test)
-        
+         
         #open connection to database and run SQL insert statement
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor() 
-        
+         
         #statements to update the ins_stats table. the first populates the analysis end time and the second changes all the columns into time taken as opposed to time stamps. NB the order of the column updates is important!
         update_ins_stats2="""update insert_stats set Analysis_end_time=%s where array_ID=%s"""
         update_ins_stats3="""update insert_stats set Analysis_end_time= timediff(Analysis_end_time ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time),TotalTime= addtime(Ins_time,Zscore_time), TotalTime=addtime(totaltime,Analysis_end_time) where array_ID=%s"""
-        
+         
         try:           
             cursor.execute(update_ins_stats2,(str(datetime.now().strftime('%H:%M:%S')),str(arrayID2test)))
             db.commit()
@@ -402,7 +425,7 @@ class Analyse_array():
                 raise
         finally:
             db.close()        
-         
+          
     def GetROI (self,array_ID):
         '''This function creates a list of all the analysis tables which are to be updated. 
         For each table the get Z scores function is called.
@@ -411,10 +434,10 @@ class Analyse_array():
         #open connection to database and run SQL select statement
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
-                  
+                   
         #sql statement
         GetROI="""select distinct Analysis_table,ROI_ID from roi where `analyse` = 2"""
-     
+      
         try:
             cursor.execute(GetROI)
             ROIqueryresult=cursor.fetchall()
@@ -425,27 +448,27 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-         
+          
         #should return a list of ((analysistable,ROI_ID),(...))
         #so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
- 
+  
         # for each ROI call get_Z_Scores function 
         for i in range(len(ROIqueryresult)):
             Analyse_array().get_Z_scores(ROIqueryresult[i][0],ROIqueryresult[i][1],array_ID)
- 
-       
+  
+        
     def get_Z_scores(self, analysistable,ROI_ID,array_ID):
         '''This function finds all the Z scores for any probes within this roi for this array and passes into the function which analyses the results'''
-         
+          
         # select the arrayID, green and red Z score for all probes within the ROI for this array. 
-        getZscorespart1="""select f.array_ID, f.greensigintzscore, f.redsigintzscore from target_features2 f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
+        getZscorespart1="""select f.array_ID, f.greensigintzscore, f.redsigintzscore from paramtest_features f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
         getZscorespart2=""" and f.array_ID="""
         combinedquery= getZscorespart1+str(ROI_ID)+getZscorespart2+str(array_ID)
-         
+          
         #open connection to database and run SQL select statement   
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database) 
         cursor=db.cursor()
-         
+          
         #execute query and assign the results to Zscorequeryresult
         try:
             cursor.execute(combinedquery)
@@ -458,31 +481,31 @@ class Analyse_array():
         finally:
             db.close()    
         #this creates a tuple for ((arrayID,greenZscore,RedZscore),(arrayID,greenZscore,RedZscore),...)
-         
+          
         #create a list for red and green Z scores
         listofgreenZscores=[]
         listofredZscores=[]
-         
+          
         #loop through the query result adding the red and green z scores to table
         for i in range (len(Zscorequeryresult)):                         
             listofgreenZscores.append(Zscorequeryresult[i][1])
             listofredZscores.append(Zscorequeryresult[i][2])
-         
+          
         # call analyse probe z scores
         Analyse_array().analyse_probe_Z_scores(array_ID,listofgreenZscores,listofredZscores,analysistable,ROI_ID)
-             
- 
+              
+  
     def analyse_probe_Z_scores (self,arrayID,greenZscores,redZscores,analysistable,ROI_ID):           
         '''this function recieves an array of z scores for red and green for a single roi. 
         The number of probes classed as abnormal are counted and passed to XX which inserts this into the analysis table'''
-
+ 
         #enter the z score for 90 and 95%
         cutoff90=1.645
         cutoff95=1.95
-          
+           
         # number of probes found in ROI
         no_of_probes_2_analyse=len(greenZscores)
-          
+           
         #create variables to count the probes outside 90 or 95% of normal range 
         reddel90=0
         reddel95=0
@@ -492,7 +515,7 @@ class Analyse_array():
         reddup95=0
         greendup90=0
         greendup95=0 
-         
+          
         #create counts for segment
         reddelabn=0
         reddupabn=0
@@ -502,11 +525,11 @@ class Analyse_array():
         reddupabn2=0
         greendelabn2=0
         greendupabn2=0
-                  
+                   
         #select which cut off to be applied in below (from above)
         cutoff=cutoff90
         cutoff2=cutoff95
-         
+          
         #for each probe within the list count if it falls into an abnormal category
         for i in range(no_of_probes_2_analyse):
             #assess the redZscore               
@@ -521,7 +544,7 @@ class Analyse_array():
                 reddel90=reddel90+1
             else:
                 pass
-          
+           
             #assess the greenZscore
             greenZscore=float(greenZscores[i])
             if greenZscore> cutoff95:
@@ -534,7 +557,7 @@ class Analyse_array():
                 greendel90=greendel90+1
             else:
                 pass
-          
+           
         ########Calculate reward for consecutive probes#### 
         # loop through redzscore list. convert i (Z score) to float
         for i,item in enumerate(redZscores):
@@ -580,7 +603,7 @@ class Analyse_array():
                     pass
                 else:
                     pass
-               
+                
             # loop through greenzscore list. convert i (Z score) to float
         for i,item in enumerate(greenZscores):
             item=float(item)
@@ -625,10 +648,10 @@ class Analyse_array():
                 else:
                     pass
             #print "redabn= "+str(redabn)
-             
-           
+              
+            
         #######repeat for Cutoff2 (95%)#######
-          
+           
         # loop through redzscore list. convert i (Z score) to float
         for i,item in enumerate(redZscores):
             item=float(item)
@@ -673,11 +696,11 @@ class Analyse_array():
                     pass
                 else:
                     pass
-               
+                
             # loop through redzscore list. convert i (Z score) to float
         for i,item in enumerate(greenZscores):
             item=float(item)
-               
+                
             if i == 0:
                 previtem=0
                 #if i is abnormal and the previous probe is also abnormal give a score of 2
@@ -718,20 +741,20 @@ class Analyse_array():
                     pass
                 else:
                     pass
-         
+          
         #create variables which can be passed to the next function to save another query.
         g_del_90=greendel90+greendel95
         r_del_90=reddel90+reddel95
         g_dup_90=greendup90+greendup95
         r_dup_90=reddup95+reddup90
-          
+           
         #SQL statement to insert of analysis table
         UpdateAnalysisTable1="""insert into """
         UpdateAnalysisTable2=""" set Array_ID=%s,ROI_ID=%s,Num_of_probes=%s,Green_del_probes_90=%s,Green_del_probes_95=%s,Red_del_probes_90=%s,Red_del_probes_95=%s,Green_dup_probes_90=%s,Green_dup_probes_95=%s,Red_dup_probes_90=%s,Red_dup_probes_95=%s,GreenDelRegionScore90=%s,GreenDelRegionScore95=%s,GreenDupRegionScore90=%s,GreenDupRegionScore95=%s,RedDelRegionScore90=%s,RedDelRegionScore95=%s,RedDupRegionScore90=%s,RedDupRegionScore95=%s"""
-         
+          
         #UpdateAnalysisTable="""update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
         combined_query=UpdateAnalysisTable1+analysistable+UpdateAnalysisTable2
-         
+          
         #open connection to database and run SQL update/ins statement
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
@@ -747,20 +770,20 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-         
+          
         # call compare hyb partner function
-        Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse)
-         
+        #Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse)
+          
     def CompareHybPartners (self,table,arrayID,ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse): 
         '''this module takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour'''
-         
+          
         #create connection
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
-            
+             
         #insert statement
         ins_to_shared_imb ="""insert Shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup) values (%s,%s,%s,%s,%s,%s)"""
-         
+          
         #Normal=True
         # if both red and green have more than half the probes abnormally low for the region say so
         if g_del_90 > (0.5 * no_of_probes_2_analyse) and r_del_90 > (0.5*no_of_probes_2_analyse) and no_of_probes_2_analyse >10:
@@ -775,10 +798,10 @@ class Analyse_array():
                     raise
             finally:
                 db.close()
- 
+  
         else:
             pass
-         
+          
         # if both red and green have more than half the probes abnormally high for the region say so
         if g_dup_90 > (0.5 * no_of_probes_2_analyse) and r_dup_90 > (0.5*no_of_probes_2_analyse) and no_of_probes_2_analyse >10:
             try:
@@ -794,7 +817,7 @@ class Analyse_array():
                 db.close()
         else:
             pass
-         
+          
 #execute the program
 if __name__=="__main__":
     #create a list of files
