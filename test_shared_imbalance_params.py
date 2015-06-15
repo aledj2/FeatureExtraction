@@ -13,7 +13,7 @@ class calculate_parameters():
     passwd="aled"
     database="dev_featextr"
     
-    def CompareHybPartners (self): 
+    def CompareHybPartners (): 
         '''this module loops through parameter of 50% to 100% and takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour with the parameters used'''
          
         #create connection
@@ -49,7 +49,7 @@ class calculate_parameters():
             Red_dup_probes_95=i[11]
 
             #set n as a counter and x as the % of probes that have to be abn to call.
-            n=0
+            n=n+1
             x=0.5
             
             while n <50:
@@ -62,7 +62,7 @@ class calculate_parameters():
                 # if both red and green have more than half the probes abnormally low for the region say so
                 if Green_del_probes_90 > (x * Num_of_probes) and Red_del_probes_90 > (x * Num_of_probes) and Num_of_probes >10:
                     try:
-                        cursor.execute(sql,(str(Array_ID),str(ROI_ID),str(Red_del_probes_90),str(Green_del_probes_90),str(Num_of_probes),str(-1),str(x),str(90)))
+                        cursor.execute(sql,(str(arrayID),str(ROI_ID),str(Red_del_probes_90),str(Green_del_probes_90),str(Num_of_probes),str(-1),str(x),str(90)))
                         db.commit()
                         #print "imbalance inserted to Shared_Imbalance"
                     except MySQLdb.Error, e:
@@ -79,7 +79,7 @@ class calculate_parameters():
                 # if both red and green have more than half the probes abnormally high for the region say so
                 if Green_dup_probes_90 > (x * Num_of_probes) and Red_dup_probes_90 > (x * Num_of_probes) and Num_of_probes >10:
                     try:
-                        cursor.execute(sql,(str(Array_ID),str(ROI_ID),str(Red_dup_probes_90),str(Green_dup_probes_90),str(Num_of_probes),str(1),str(x),str(90)))
+                        cursor.execute(sql,(str(arrayID),str(ROI_ID),str(Red_dup_probes_90),str(Green_dup_probes_90),str(Num_of_probes),str(1),str(x),str(90)))
                         db.commit()
                         #print "imbalance inserted to Shared_Imbalance"
                     except MySQLdb.Error, e:
@@ -94,40 +94,5 @@ class calculate_parameters():
                 n=n+1
                 x=x+.01
                 
-                ## repeat for 95%
-                # if both red and green have more than half the probes abnormally low for the region say so
-                if Green_del_probes_95 > (x * Num_of_probes) and Red_del_probes_95 > (x * Num_of_probes) and Num_of_probes >10:
-                    try:
-                        cursor.execute(sql,(str(Array_ID),str(ROI_ID),str(Red_del_probes_95),str(Green_del_probes_95),str(Num_of_probes),str(-1),str(x),str(95)))
-                        db.commit()
-                        #print "imbalance inserted to Shared_Imbalance"
-                    except MySQLdb.Error, e:
-                        db.rollback()
-                        print "fail - unable to update shared_imbalances table" 
-                        if e[0]!= '###':
-                            raise
-                    finally:
-                        db.close()
-         
-                else:
-                    pass
-                 
-                # if both red and green have more than half the probes abnormally high for the region say so
-                if Green_dup_probes_95 > (x * Num_of_probes) and Red_dup_probes_95 > (x * Num_of_probes) and Num_of_probes >10:
-                    try:
-                        cursor.execute(sql,(str(Array_ID),str(ROI_ID),str(Red_dup_probes_95),str(Green_dup_probes_95),str(Num_of_probes),str(1),str(x),str(95)))
-                        db.commit()
-                        #print "imbalance inserted to Shared_Imbalance"
-                    except MySQLdb.Error, e:
-                        db.rollback()
-                        print "fail - unable to update shared_imbalances table" 
-                        if e[0]!= '###':
-                            raise
-                    finally:
-                        db.close()
-                else:
-                    pass
-                n=n+1
-                x=x+.01
-        
+                
 calculate_parameters().CompareHybPartners()

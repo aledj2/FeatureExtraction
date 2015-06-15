@@ -1,8 +1,6 @@
 '''
 Created on 12 Jun 2015
-This script looks up the true_pos table which has the arrayID and which ROI has been reported
-for each abn it gets a list of abn probes for that region and creates two copies of the file, one with all abnormal probes in the region set to green and one to red.
-depending on if it's a red or green hyb partner one will be true positive, one a true negative.
+
 @author: Aled
 '''
 import MySQLdb
