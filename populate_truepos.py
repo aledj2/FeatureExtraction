@@ -6,85 +6,86 @@ This script populates the true_pos table with the array_ID,roi_ID that was calle
 import MySQLdb
 import cy3_or_cy5
 
+
 class fill_true_pos():
-    abnarrays=[]
+    abnarrays = []
     # read the abn arrays txt file and for each line split
+
     def read_abnarrays(self):
-        file2open = open("F:\\fefiles\\abnormalarrays.txt",'r')
+        file2open = open("F:\\fefiles\\abnormalarrays.txt", 'r')
         for i, line in enumerate(file2open):
-            #ignore header
-            if i >1:
-                splitline=line.split('\t')
-                splitline[7]=splitline[7].rstrip()
-                self.abnarrays.append(splitline)         
-               
+            # ignore header
+            if i > 1:
+                splitline = line.split('\t')
+                splitline[7] = splitline[7].rstrip()
+                self.abnarrays.append(splitline)
+
     def get_filename(self):
-        #loop through the file and create search terms to extract the array id from feparams table  
+        # loop through the file and create search terms to extract the array id from feparams table
         for i in self.abnarrays:
-            barcode=i[5]
-            subarray=int(i[6])
-            
+            barcode = i[5]
+            subarray = int(i[6])
+
             if subarray == 1:
-                #assign to subarray the desired end to the filename. use ? as wildcard character
-                subarray="1_1.txt"
+                # assign to subarray the desired end to the filename. use ? as wildcard character
+                subarray = "1_1.txt"
             elif subarray == 2:
-                subarray="1_2.txt"
+                subarray = "1_2.txt"
             elif subarray == 3:
-                subarray="1_3.txt"
-            elif subarray== 4:
-                subarray="1_4.txt"
-            elif subarray== 5:
-                subarray="2_1.txt"
+                subarray = "1_3.txt"
+            elif subarray == 4:
+                subarray = "1_4.txt"
+            elif subarray == 5:
+                subarray = "2_1.txt"
             elif subarray == 6:
-                subarray="2_2.txt"
+                subarray = "2_2.txt"
             elif subarray == 7:
-                subarray="2_3.txt"
+                subarray ="2_3.txt"
             elif subarray == 8:
-                subarray="2_4.txt"
+                subarray ="2_4.txt"
             else:
                 print "error in subarray"
-            
-            #get array_ID from feparam
-            sql1="select array_ID from feparam where filename like '"+str(barcode)+"%"+str(subarray)+"'"
-            
-            
+
+            # get array_ID from feparam
+            sql1 = "select array_ID from feparam where filename like '" + str(barcode) + "%" + str(subarray) + "'"
+
             #create connection
-            db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
-            cursor=db.cursor()
+            db = MySQLdb.Connect(host="localhost", port=3307, user="aled", passwd="aled", db="dev_featextr")
+            cursor = db.cursor()
             try:
                 cursor.execute(sql1)
-                array_ID=cursor.fetchone()
+                array_ID = cursor.fetchone()
             except MySQLdb.Error, e:
                 db.rollback()
-                print "fail" 
-                if e[0]!= '###':
+                print "fail"
+                if e[0] != '###':
                     raise
             finally:
                 db.close()
-            
+
             if array_ID is not None:
                 array_ID=array_ID[0]
                 #print array_ID
                 i.append(int(array_ID))
                 #print i
                 fill_true_pos().get_ROI(i)
-    
-    uniques={}
-                
-    def get_ROI(self,abnormality):
-        #for each abnormal array get which ROI was called
-        chromosome=abnormality[0]
-        start=abnormality[1]
-        stop=abnormality[2]
-        array_ID=int(abnormality[8])
+
+    uniques = {}
+
+    def get_ROI(self, abnormality):
+        # for each abnormal array get which ROI was called
+        chromosome = abnormality[0]
+        start = abnormality[1]
+        stop = abnormality[2]
+        array_ID = int(abnormality[8])
         
-        if chromosome=='X':
-            chromosome=23
-        elif chromosome=='Y':
-            chromosome=24
-        else: 
+        if chromosome == 'X':
+            chromosome = 23
+        elif chromosome == 'Y':
+            chromosome = 24
+        else:
             pass
-        
+
         sql="select ROI_ID from ROI where chromosomenumber = "+str(chromosome)+" and start = "+start+" and stop = "+ stop
 
         #create connection
