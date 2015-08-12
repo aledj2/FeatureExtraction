@@ -6,36 +6,40 @@ this script looks at the analysis all table and calculates the cut off for what 
 import MySQLdb
 
 class calculate_parameters():
-#define parameters used when connecting to database
+    #define parameters used when connecting to database
     host="localhost"
     port=int(3307)
     username="aled"
     passwd="aled"
     database="dev_featextr"
     
-    def CompareHybPartners (): 
+    to_ins=[]
+    def CompareHybPartners (self): 
         '''this module loops through parameter of 50% to 100% and takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour with the parameters used'''
          
         #create connection
         db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
         cursor=db.cursor()
             
-        sql="select * from analysis_all where array_ID > X"
+        sql="select * from analysis_all where array_ID = 688 "
         try:
             cursor.execute(sql)
             analysisall=cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
-            print "fail - unable to retrieve z scores"
+            print "fail - unable to read analysis_all table"
             if e[0]!= '###':
                 raise
         finally:
             db.close() 
         
-        #this creates a tuple for (Analysis_Key,Array_ID,INT(11) NOT NULL,ROI_ID,Num_of_probes,Green_del_probes_90,Green_del_probes_95,Red_del_probes_90,Red_del_probes_95,Green_dup_probes_90,Green_dup_probes_95,Red_dup_probes_90,Red_dup_probes_95,GreenDelRegionScore90,GreenDelRegionScore95,GreenDupRegionScore90,GreenDupRegionScore95,RedDelRegionScore90,RedDelRegionScore95,RedDupRegionScore90,RedDupRegionScore95)
+        #print "analysis all read"
+        print analysisall
+        
+        #this creates a tuple for (Analysis_Key,Array_ID,ROI_ID,Num_of_probes,Green_del_probes_90,Green_del_probes_95,Red_del_probes_90,Red_del_probes_95,Green_dup_probes_90,Green_dup_probes_95,Red_dup_probes_90,Red_dup_probes_95,GreenDelRegionScore90,GreenDelRegionScore95,GreenDupRegionScore90,GreenDupRegionScore95,RedDelRegionScore90,RedDelRegionScore95,RedDupRegionScore90,RedDupRegionScore95)
         for i in analysisall:
             
-            Analysis_Key=i[0]
+            #Analysis_Key=i[0]
             Array_ID=i[1]
             ROI_ID=i[2]
             Num_of_probes=i[3]
@@ -47,52 +51,72 @@ class calculate_parameters():
             Green_dup_probes_95=i[9]
             Red_dup_probes_90=i[10]
             Red_dup_probes_95=i[11]
+            
+#             print "array_ID= "+str(Array_ID)
+#             print "ROI_ID= "+str(ROI_ID)
+#             print "Num_of_probes= " +str(Num_of_probes)
+#             print "Green_del_probes_90= "+str(Green_del_probes_90)
+#             print "Green_del_probes_95= "+str(Green_del_probes_95)
+#             print "Red_del_probes_90= "+str(Red_del_probes_90)
+#             print "Red_del_probes_95= "+str(Red_del_probes_95)
+#             print "Green_dup_probes_90= "+str(Green_dup_probes_90)
+#             print "Green_dup_probes_95= "+str(Green_dup_probes_95)
+#             print "Red_dup_probes_90= "+str(Red_dup_probes_90)
+#             print "Red_dup_probes_95= "+str(Red_dup_probes_95)
+            
 
-            #set n as a counter and x as the % of probes that have to be abn to call.
-            n=n+1
+            #set x as the % of probes that have to be abn to call.
             x=0.5
             
-            while n <50:
-                #create connection
-                db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
-                cursor=db.cursor()
-            
-                sql="insert into test_shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup,num_of_probes_parameter,Z_score_parameter) values (%s,%s,%s,%s,%s,%s,%s,%s)"""     
+            while x < 1:
+                #print "x= "+str(x) 
                 
                 # if both red and green have more than half the probes abnormally low for the region say so
                 if Green_del_probes_90 > (x * Num_of_probes) and Red_del_probes_90 > (x * Num_of_probes) and Num_of_probes >10:
-                    try:
-                        cursor.execute(sql,(str(arrayID),str(ROI_ID),str(Red_del_probes_90),str(Green_del_probes_90),str(Num_of_probes),str(-1),str(x),str(90)))
-                        db.commit()
-                        #print "imbalance inserted to Shared_Imbalance"
-                    except MySQLdb.Error, e:
-                        db.rollback()
-                        print "fail - unable to update shared_imbalances table" 
-                        if e[0]!= '###':
-                            raise
-                    finally:
-                        db.close()
-         
-                else:
-                    pass
-                 
+                    #print "DEL! @ 90"
+                    self.to_ins.append((Array_ID,ROI_ID,-1,Red_del_probes_90,Green_del_probes_90,Num_of_probes,x,90))
+
+                
                 # if both red and green have more than half the probes abnormally high for the region say so
                 if Green_dup_probes_90 > (x * Num_of_probes) and Red_dup_probes_90 > (x * Num_of_probes) and Num_of_probes >10:
-                    try:
-                        cursor.execute(sql,(str(arrayID),str(ROI_ID),str(Red_dup_probes_90),str(Green_dup_probes_90),str(Num_of_probes),str(1),str(x),str(90)))
-                        db.commit()
-                        #print "imbalance inserted to Shared_Imbalance"
-                    except MySQLdb.Error, e:
-                        db.rollback()
-                        print "fail - unable to update shared_imbalances table" 
-                        if e[0]!= '###':
-                            raise
-                    finally:
-                        db.close()
-                else:
-                    pass
-                n=n+1
+                    #print "Dup @ 90"
+                    self.to_ins.append((Array_ID,ROI_ID,1,Red_dup_probes_90,Green_dup_probes_90,Num_of_probes,x,90))
+
+                ## repeat for 95%
+                # if both red and green have more than half the probes abnormally low for the region say so
+                
+                if Green_del_probes_95 > (x * Num_of_probes) and Red_del_probes_95 > (x * Num_of_probes) and Num_of_probes >10:
+                    #print "DEL! @ 95"
+                    self.to_ins.append((Array_ID,ROI_ID,-1,Red_del_probes_95,Green_del_probes_95,Num_of_probes,x,95))
+
+                # if both red and green have more than half the probes abnormally high for the region say so
+                if Green_dup_probes_95 > (x * Num_of_probes) and Red_dup_probes_95 > (x * Num_of_probes) and Num_of_probes >10:
+                    #print "Dup @ 95"
+                    self.to_ins.append((Array_ID,ROI_ID,1,Red_dup_probes_95,Green_dup_probes_95,Num_of_probes,x,95))
+                
                 x=x+.01
+            
+        ##print self.to_ins
+    def insert(self):
+        for i in self.to_ins:
+            print i
+            #create connection
+            db=MySQLdb.Connect(host=self.host,port=self.port,user=self.username,passwd=self.passwd,db=self.database)
+            cursor=db.cursor()
                 
-                
+            sql="insert into test_shared_imbalances (array_ID,ROI_ID,del_dup,No_of_red_probes,No_of_green_probes,Probes_in_ROI,num_of_probes_parameter, Z_score_parameter) values (%s,%s,%s,%s,%s,%s,%s,%s)"
+            try:
+                cursor.execute(sql,(str(i[0]),str(i[1]),str(i[2]),str(i[3]),str(i[4]),str(i[5]),str(i[6]),str(i[7])))
+                print "insert into test_shared_imbalances (array_ID,ROI_ID,del_dup,No_of_red_probes,No_of_green_probes,Probes_in_ROI,num_of_probes_parameter, Z_score_parameter) values ("+str(i[0])+","+str(i[1])+","+str(i[2])+","+str(i[3])+","+str(i[4])+","+str(i[5])+","+str(i[6])+","+str(i[7])+")"
+                db.commit()
+            except MySQLdb.Error, e:
+                db.rollback()
+                print "fail - unable to insert"
+                if e[0]!= '###':
+                    raise
+            finally:
+                db.close() 
+        
 calculate_parameters().CompareHybPartners()
+calculate_parameters().insert()
+#print calculate_parameters().to_ins
