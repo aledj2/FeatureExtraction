@@ -32,10 +32,10 @@ class Analyse_array():
     def get_files(self):    
         '''loops through the specified folder (above) and adds any .txt files to this array(looking for all FE files)''' 
         #for txt file in folder add to list 
-        for file in os.listdir(self.chosenfolder):
-            if file.endswith(".txt"):
-                self.chosenfiles.append(file)
-        print len(self.chosenfiles)
+        for afile in os.listdir(self.chosenfolder):
+            if afile.endswith(".txt"):
+                self.chosenfiles.append(afile)
+         
     
     #create an empty array for all the probes that are within ROI (global)
     list_of_probes=[]
@@ -48,10 +48,9 @@ class Analyse_array():
         for line in fileofprobes:
             self.list_of_probes.append(line.rstrip())
         
-        
+
     def read_file(self,filein):
         ''' This function recieves a FE file name (one at a time), opens it, adds information/selected probes to lists and passes these to functions which perform insert statements '''            
-        print "starting file"
         #combine the specified folder and one file from the for loop which instigates this program   
         file2open= self.chosenfolder+"\\"+filein
         
@@ -381,7 +380,7 @@ class Analyse_array():
         cursor=db.cursor()
           
         #statement to update the paramtest_features table to populate the probekey (numeric keys to speed up subsequent steps)
-        update_probeKey="""update paramtest_features, probeorder set paramtest_features.probekey=probeorder.probekey where probeorder.probename=paramtest_features.probename"""
+        update_probeKey="""update paramtest_features, probeorder set paramtest_features.probekey=probeorder.probekey where probeorder.probename=paramtest_features.probename and paramtest_features.array_ID=%s"""
           
         #SQL statement which captures or creates the values required
         UpdateLogRatio="""update paramtest_features t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
@@ -389,7 +388,7 @@ class Analyse_array():
         #statement to populate ins_stats table
         update_ins_stats="""update insert_stats set Zscore_time=%s where array_ID=%s"""
         try:           
-            cursor.execute(update_probeKey)
+            cursor.execute(update_probeKey,str((arrayID2test)))
             db.commit()
             cursor.execute(UpdateLogRatio,str((arrayID2test)))
             db.commit()
@@ -425,6 +424,7 @@ class Analyse_array():
                 raise
         finally:
             db.close()        
+        
           
     def GetROI (self,array_ID):
         '''This function creates a list of all the analysis tables which are to be updated. 
@@ -772,7 +772,7 @@ class Analyse_array():
             db.close()
           
         # call compare hyb partner function
-        #Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse)
+        Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse)
           
     def CompareHybPartners (self,table,arrayID,ROI_ID,g_del_90,g_dup_90,r_del_90,r_dup_90,no_of_probes_2_analyse): 
         '''this module takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour'''
@@ -783,10 +783,13 @@ class Analyse_array():
              
         #insert statement
         ins_to_shared_imb ="""insert Shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup) values (%s,%s,%s,%s,%s,%s)"""
-          
+        
+        percentage_of_probes=0.5
+        minimum_no_of_probes=10  
+        
         #Normal=True
         # if both red and green have more than half the probes abnormally low for the region say so
-        if g_del_90 > (0.5 * no_of_probes_2_analyse) and r_del_90 > (0.5*no_of_probes_2_analyse) and no_of_probes_2_analyse >10:
+        if g_del_90 > (percentage_of_probes * no_of_probes_2_analyse) and r_del_90 > (percentage_of_probes *no_of_probes_2_analyse) and no_of_probes_2_analyse > minimum_no_of_probes:
             try:
                 cursor.execute(ins_to_shared_imb,(str(arrayID),str(ROI_ID),str(r_del_90),str(g_del_90),str(no_of_probes_2_analyse),str(-1)))
                 db.commit()
@@ -803,7 +806,7 @@ class Analyse_array():
             pass
           
         # if both red and green have more than half the probes abnormally high for the region say so
-        if g_dup_90 > (0.5 * no_of_probes_2_analyse) and r_dup_90 > (0.5*no_of_probes_2_analyse) and no_of_probes_2_analyse >10:
+        if g_dup_90 > (percentage_of_probes * no_of_probes_2_analyse) and r_dup_90 > (percentage_of_probes *no_of_probes_2_analyse) and no_of_probes_2_analyse > minimum_no_of_probes:
             try:
                 cursor.execute(ins_to_shared_imb,(str(arrayID),str(ROI_ID),str(r_dup_90),str(g_dup_90),str(no_of_probes_2_analyse),str(1)))
                 db.commit()
@@ -824,5 +827,8 @@ if __name__=="__main__":
     Analyse_array().get_files()
     Analyse_array().get_list_of_target_probes()
     #and feed them into the read file function.
+    n=1
     for i in Analyse_array.chosenfiles:
+        print "file "+str(n) +" of "+str(len(Analyse_array().chosenfiles)) 
         Analyse_array().read_file(i)
+        n=n+1
