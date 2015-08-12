@@ -40,16 +40,16 @@ class fill_true_pos():
             elif subarray == 6:
                 subarray = "2_2.txt"
             elif subarray == 7:
-                subarray ="2_3.txt"
+                subarray = "2_3.txt"
             elif subarray == 8:
-                subarray ="2_4.txt"
+                subarray = "2_4.txt"
             else:
                 print "error in subarray"
 
             # get array_ID from feparam
             sql1 = "select array_ID from feparam where filename like '" + str(barcode) + "%" + str(subarray) + "'"
 
-            #create connection
+            # create connection
             db = MySQLdb.Connect(host="localhost", port=3307, user="aled", passwd="aled", db="dev_featextr")
             cursor = db.cursor()
             try:
@@ -64,10 +64,10 @@ class fill_true_pos():
                 db.close()
 
             if array_ID is not None:
-                array_ID=array_ID[0]
-                #print array_ID
+                array_ID = array_ID[0]
+                # print array_ID
                 i.append(int(array_ID))
-                #print i
+                # print i
                 fill_true_pos().get_ROI(i)
 
     uniques = {}
@@ -78,7 +78,7 @@ class fill_true_pos():
         start = abnormality[1]
         stop = abnormality[2]
         array_ID = int(abnormality[8])
-        
+
         if chromosome == 'X':
             chromosome = 23
         elif chromosome == 'Y':
@@ -86,80 +86,79 @@ class fill_true_pos():
         else:
             pass
 
-        sql="select ROI_ID from ROI where chromosomenumber = "+str(chromosome)+" and start = "+start+" and stop = "+ stop
+        sql = "select ROI_ID from ROI where chromosomenumber = " + str(chromosome) + " and start = " + start + " and stop = " + stop
 
-        #create connection
-        db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
-        cursor=db.cursor()
+        # create connection
+        db = MySQLdb.Connect(host="localhost", port=3307, user="aled", passwd="aled", db="dev_featextr")
+        cursor = db.cursor()
         try:
             cursor.execute(sql)
-            ROI_ID=cursor.fetchone()
+            ROI_ID = cursor.fetchone()
         except MySQLdb.Error, e:
             db.rollback()
-            print "fail" 
-            if e[0]!= '###':
+            print "fail"
+            if e[0] != '###':
                 raise
         finally:
             db.close()
-        
+
         if ROI_ID is not None:
             ROI_ID = int(ROI_ID[0])
             abnormality.append(ROI_ID)
-            #create a dictionary with the key arrayid_roi_ID to prevent duplicates but all multiple roi in one patient
-            self.uniques[str(array_ID)+"_"+str(ROI_ID)]=abnormality
-            
+            # create a dictionary with the key arrayid_roi_ID to prevent duplicates but all multiple roi in one patient
+            self.uniques[str(array_ID) + "_" + str(ROI_ID)] = abnormality
+
     def insert_uniques(self):
         # loop through the dictionaryof unique abnormalities and populate the table
         print "inserting"
-        
+
         for i in self.uniques:
-            #print self.uniques[i]
-            ROI_ID=self.uniques[i][9]
-            array_ID=self.uniques[i][8]
-            
-            #print self.uniques[i][3]
+            # print self.uniques[i]
+            ROI_ID = self.uniques[i][9]
+            array_ID = self.uniques[i][8]
+
+            # print self.uniques[i][3]
             if self.uniques[i][3] == 'x3':
-                #print "dup"
-                gain_loss= int(3)
-                #print gain_loss
-            elif self.uniques[i][3]== 'x4':
-                #print "dup time 4"
-                gain_loss= int(4)
-                #print gain_loss
+                # print "dup"
+                gain_loss = int(3)
+                # print gain_loss
+            elif self.uniques[i][3] == 'x4':
+                # print "dup time 4"
+                gain_loss = int(4)
+                # print gain_loss
             elif self.uniques[i][3] == 'x2':
-                #print "loss"
-                gain_loss= int(2)
-                #print gain_loss
+                # print "loss"
+                gain_loss = int(2)
+                # print gain_loss
             elif self.uniques[i][3] == 'x1':
-                #print "loss"
-                gain_loss= int(1)
-                #print gain_loss
+                # print "loss"
+                gain_loss = int(1)
+                # print gain_loss
             elif self.uniques[i][3] == 'x0':
-                #print "nullosomy"
-                gain_loss= int(0)
-                #print gain_loss
+                # print "nullosomy"
+                gain_loss = int(0)
+                # print gain_loss
             else:
-                gain_loss=int(99999)
-                #print "gain_loss_error " +str(self.uniques[i])
-                
-        
-            db=MySQLdb.Connect(host="localhost",port=3307, user ="aled",passwd="aled",db="dev_featextr")
-            cursor=db.cursor()
-            ins="insert into true_pos (Array_ID,ROI_ID,Gain_Loss) values (%s,%s,%s)"
-      
+                gain_loss = int(99999)
+                # print "gain_loss_error " +str(self.uniques[i])
+
+            db = MySQLdb.Connect(host="localhost", port=3307, user="aled", passwd="aled", db="dev_featextr")
+            cursor = db.cursor()
+            ins = "insert into true_pos (Array_ID,ROI_ID,Gain_Loss) values (%s,%s,%s)"
+
             try:
-                cursor.execute(ins,(str(array_ID),str(ROI_ID),str(gain_loss)))
+                cursor.execute(ins, (str(array_ID), str(ROI_ID), str(gain_loss)))
                 db.commit()
             except MySQLdb.Error, e:
                 db.rollback()
-                print "fail" 
-                if e[0]!= '###':
+                print "fail"
+                if e[0] != '###':
                     raise
             finally:
                 db.close()
-            
+
         print "done"
-            
+
 fill_true_pos().read_abnarrays()
 fill_true_pos().get_filename()
 fill_true_pos().insert_uniques()

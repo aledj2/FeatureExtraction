@@ -13,8 +13,7 @@ class which_hyb_partner_is_affected():
     '''
     The truepos table contains information of abnormal arrays, such as the arrayID, which ROI is abn and the copy number.
     However we do not know which hyb partner is abnormal.
-    This table also contains arrays which have been created so that for each reported region an FE file was created so both hyb partners share the imbalance
-    and another where they share the normal region.
+    This table also contains arrays which have been created so that for each reported region an FE file was created so both hyb partners share the imbalance and another where they share the normal region.
 
     The module get_true_pos gets the arrayID, filename, ROI and copy number for each array in true positive.
 
@@ -23,8 +22,7 @@ class which_hyb_partner_is_affected():
     The module combine_lists combines the results of the above two lists.
 
     The module update_true_pos then opens a file which contains a list of all the hyb partners and which dye it had.
-    The corresponding column in true pos was then updated with a flag with which dye it is. This allows us to know which of the created FE file is the
-    truepos and which is the true neg.
+    The corresponding column in true pos was then updated with a flag with which dye it is. This allows us to know which of the created FE file is the truepos and which is the true neg.
     '''
 
     # define parameters used when connecting to database
