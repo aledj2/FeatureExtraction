@@ -1,10 +1,10 @@
 '''
 Created on 12 Jun 2015
-This script populates the turepos table with the array_ID,roi_ID that was claled in this array and if its a del or dup.
+This script populates the true_pos table with the array_ID,roi_ID that was called in this array and if its a del or dup.
 @author: Aled
 '''
 import MySQLdb
-
+import cy3_or_cy5
 
 class fill_true_pos():
     abnarrays=[]
@@ -12,6 +12,7 @@ class fill_true_pos():
     def read_abnarrays(self):
         file2open = open("F:\\fefiles\\abnormalarrays.txt",'r')
         for i, line in enumerate(file2open):
+            #ignore header
             if i >1:
                 splitline=line.split('\t')
                 splitline[7]=splitline[7].rstrip()
@@ -161,3 +162,7 @@ class fill_true_pos():
 fill_true_pos().read_abnarrays()
 fill_true_pos().get_filename()
 fill_true_pos().insert_uniques()
+cy3_or_cy5.which_hyb_partner_is_affected().get_true_pos()
+cy3_or_cy5.which_hyb_partner_is_affected().recreate_filenames()
+cy3_or_cy5.which_hyb_partner_is_affected().combine_lists()
+cy3_or_cy5.which_hyb_partner_is_affected().update_true_pos()
