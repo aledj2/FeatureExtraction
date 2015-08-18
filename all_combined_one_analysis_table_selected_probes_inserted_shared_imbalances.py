@@ -144,7 +144,7 @@ class Analyse_array():
             importedfilenames = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
-            print "fail - unable to get4 list of imported filenames"
+            print "fail - unable to get list of imported filenames"
             if e[0] != '###':
                 raise
         finally:
