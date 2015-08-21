@@ -17,14 +17,14 @@ import os
 from datetime import datetime
 
 
-class Analyse_array():
+class get_files_and_probes():
 
     def __init__(self):
         pass
 
     # specify the folder.
     # chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
-    chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
+    chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos2"  # PC
     # chosenfolder="F:\\fefiles\\1"#USB
 
     # Create an array to store all the files in.
@@ -43,10 +43,14 @@ class Analyse_array():
     def get_list_of_target_probes(self):
         '''This module reads a file with all the probes which fall within a ROI and fill the list_of_probes.'''
         # open file of target probes
-        fileofprobes = open("C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes.csv", 'r')
+        # fileofprobes = open("C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes.csv", 'r')
+        fileofprobes = open("C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes_all.csv", 'r')
         # append to list after removing newline
         for line in fileofprobes:
             self.list_of_probes.append(line.rstrip())
+
+
+class Analyse_array():
 
     def read_file(self, filein):
         ''' This function recieves a FE file name (one at a time), opens it, adds information/selected probes to lists and passes these to functions which perform insert statements '''
@@ -253,7 +257,7 @@ class Analyse_array():
         Analyse_array().insert_features(Array_ID)
 
     # An insert statement which is appended to in the below create_ins_statements function
-    baseinsertstatement = "INSERT INTO paramtest_features(Array_ID,FeatureNum,Row,Col,SubTypeMask,ControlType,ProbeName,SystematicName,Chromosome,Start,Stop,PositionX,PositionY,LogRatio,LogRatioError,PValueLogRatio,gProcessedSignal,rProcessedSignal,gProcessedSigError,rProcessedSigError,gMedianSignal,rMedianSignal,gBGMedianSignal,rBGMedianSignal,gBGPixSDev,rBGPixSDev,gIsSaturated,rIsSaturated,gIsFeatNonUnifOL,rIsFeatNonUnifOL,gIsBGNonUnifOL,rIsBGNonUnifOL,gIsFeatPopnOL,rIsFeatPopnOL,gIsBGPopnOL,rIsBGPopnOL,IsManualFlag,gBGSubSignal,rBGSubSignal,gIsPosAndSignif,rIsPosAndSignif,gIsWellAboveBG,rIsWellAboveBG,SpotExtentX,gBGMeanSignal,rBGMeanSignal) values "
+    baseinsertstatement = "INSERT INTO features2(Array_ID,FeatureNum,Row,Col,SubTypeMask,ControlType,ProbeName,SystematicName,Chromosome,Start,Stop,PositionX,PositionY,LogRatio,LogRatioError,PValueLogRatio,gProcessedSignal,rProcessedSignal,gProcessedSigError,rProcessedSigError,gMedianSignal,rMedianSignal,gBGMedianSignal,rBGMedianSignal,gBGPixSDev,rBGPixSDev,gIsSaturated,rIsSaturated,gIsFeatNonUnifOL,rIsFeatNonUnifOL,gIsBGNonUnifOL,rIsBGNonUnifOL,gIsFeatPopnOL,rIsFeatPopnOL,gIsBGPopnOL,rIsBGPopnOL,IsManualFlag,gBGSubSignal,rBGSubSignal,gIsPosAndSignif,rIsPosAndSignif,gIsWellAboveBG,rIsWellAboveBG,SpotExtentX,gBGMeanSignal,rBGMeanSignal) values "
 
     # create a dictionary to hold the insert statements and a list of keys which can be used to pull out the insert statements
     insertstatements = {}
@@ -375,10 +379,10 @@ class Analyse_array():
         cursor = db.cursor()
 
         # statement to update the paramtest_features table to populate the probekey (numeric keys to speed up subsequent steps)
-        update_probeKey = """update paramtest_features, probeorder set paramtest_features.probekey=probeorder.probekey where probeorder.probename=paramtest_features.probename and paramtest_features.array_ID=%s"""
+        update_probeKey = """update features2 f, probeorder set f.probekey=probeorder.probekey where probeorder.probename=f.probename and f.array_ID=%s"""
 
         # SQL statement which captures or creates the values required
-        UpdateLogRatio = """update paramtest_features t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
+        UpdateLogRatio = """update features2 f, referencevalues set GreenLogratio=log2(f.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(f.rprocessedsignal/referencevalues.rsignalint),f.rReferenceAverageUsed = referencevalues.rSignalInt,f.gReferenceAverageUsed=referencevalues.gSignalInt, f.rReferenceSD=referencevalues.rSignalIntSD, f.gReferenceSD=referencevalues.gSignalIntSD, f.greensigintzscore=((f.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),f.redsigintzscore=((f.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where f.Probekey=referencevalues.Probekey and f.array_ID=%s"""
 
         # statement to populate ins_stats table
         update_ins_stats = """update insert_stats set Zscore_time=%s where array_ID=%s"""
@@ -454,7 +458,7 @@ class Analyse_array():
         '''This function finds all the Z scores for any probes within this roi for this array and passes into the function which analyses the results'''
 
         # select the arrayID, green and red Z score for all probes within the ROI for this array.
-        getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from paramtest_features f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
+        getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from features2 f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
         getZscorespart2 = """ and f.array_ID="""
         combinedquery = getZscorespart1 + str(ROI_ID) + getZscorespart2 + str(array_ID)
 
@@ -815,11 +819,11 @@ class Analyse_array():
 # execute the program
 if __name__ == "__main__":
     # create a list of files
-    Analyse_array().get_files()
-    Analyse_array().get_list_of_target_probes()
+    get_files_and_probes().get_files()
+    get_files_and_probes().get_list_of_target_probes()
     # and feed them into the read file function.
     n = 1
-    for i in Analyse_array.chosenfiles:
+    for i in get_files_and_probes.chosenfiles:
         print "file " + str(n) + " of " + str(len(Analyse_array().chosenfiles))
         Analyse_array().read_file(i)
         n = n + 1
