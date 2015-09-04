@@ -25,10 +25,10 @@ class min_3_probes:
         # number to letter dict
         self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
         
-        self.features_table = 'features2'
+        self.features_table = 'features'
         
         # minimum number of consecutive probes (set to min probes + 2)
-        self.min_consecutive_probes = 7
+        self.min_consecutive_probes = 5
     
     def get_Z_scores(self, arrayID):
         
@@ -94,31 +94,32 @@ class min_3_probes:
         for i in range(1, 23):
             # get number of probes on chromosomes
             no_probes_on_chrom = len(Zscore_results[i])
-            # loop through each probe in order (except the last two as there won't be 2 probes after these)
-            for j in range(no_probes_on_chrom - 2):
-                # check is probe one cy3 is below the negative cutoff
-                if Zscore_results[i][j][0] < -self.Zscore_cutoff:
-                    # then check probe 2
-                    if Zscore_results[i][j + 1][0] < -self.Zscore_cutoff:
-                        # and probe 3
-                        if Zscore_results[i][j + 2][0] < -self.Zscore_cutoff:
-                            # next check the Cy5 for probe one
-                            if Zscore_results[i][j][1] < -self.Zscore_cutoff:
-                                # and probe 2
-                                if Zscore_results[i][j + 1][1] < -self.Zscore_cutoff:
-                                    # probe 3
-                                    if Zscore_results[i][j + 2][1] < -self.Zscore_cutoff:
-                                        # If all these probes are below the cut off then add a tuple to the shared_imbalance list as (chrom, -1/1 (loss/gain),probe 1 probeorder_ID,probe 2 probeorder_ID,probe 3 probeorder_ID)
-                                        shared_imbalance.append((Zscore_results[i][j][3], -1, Zscore_results[i][j][2], Zscore_results[i][j][2] + 1, Zscore_results[i][j][2] + 2))
-
-                # Repeat for gains (above positive cutoff)
-                if Zscore_results[i][j][0] > self.Zscore_cutoff:
-                    if Zscore_results[i][j + 1][0] > self.Zscore_cutoff:
-                        if Zscore_results[i][j + 2][0] > self.Zscore_cutoff:
-                            if Zscore_results[i][j][1] > self.Zscore_cutoff:
-                                if Zscore_results[i][j + 1][1] > self.Zscore_cutoff:
-                                    if Zscore_results[i][j + 2][1] > self.Zscore_cutoff:
-                                        shared_imbalance.append((Zscore_results[i][j][3], 1, Zscore_results[i][j][2], Zscore_results[i][j][2] + 1, Zscore_results[i][j][2] + 2))
+            if no_probes_on_chrom >1:
+                # loop through each probe in order (except the last two as there won't be 2 probes after these)
+                for j in range(no_probes_on_chrom - 2):
+                    # check is probe one cy3 is below the negative cutoff
+                    if Zscore_results[i][j][0] < -self.Zscore_cutoff:
+                        # then check probe 2
+                        if Zscore_results[i][j + 1][0] < -self.Zscore_cutoff:
+                            # and probe 3
+                            if Zscore_results[i][j + 2][0] < -self.Zscore_cutoff:
+                                # next check the Cy5 for probe one
+                                if Zscore_results[i][j][1] < -self.Zscore_cutoff:
+                                    # and probe 2
+                                    if Zscore_results[i][j + 1][1] < -self.Zscore_cutoff:
+                                        # probe 3
+                                        if Zscore_results[i][j + 2][1] < -self.Zscore_cutoff:
+                                            # If all these probes are below the cut off then add a tuple to the shared_imbalance list as (chrom, -1/1 (loss/gain),probe 1 probeorder_ID,probe 2 probeorder_ID,probe 3 probeorder_ID)
+                                            shared_imbalance.append((Zscore_results[i][j][3], -1, Zscore_results[i][j][2], Zscore_results[i][j][2] + 1, Zscore_results[i][j][2] + 2))
+    
+                    # Repeat for gains (above positive cutoff)
+                    if Zscore_results[i][j][0] > self.Zscore_cutoff:
+                        if Zscore_results[i][j + 1][0] > self.Zscore_cutoff:
+                            if Zscore_results[i][j + 2][0] > self.Zscore_cutoff:
+                                if Zscore_results[i][j][1] > self.Zscore_cutoff:
+                                    if Zscore_results[i][j + 1][1] > self.Zscore_cutoff:
+                                        if Zscore_results[i][j + 2][1] > self.Zscore_cutoff:
+                                            shared_imbalance.append((Zscore_results[i][j][3], 1, Zscore_results[i][j][2], Zscore_results[i][j][2] + 1, Zscore_results[i][j][2] + 2))
 
     def redefine_shared_region(self):
         ''' this module goes through the shared imbalance list one chromosome at a time and merges any overlapping 'tiles' into larger regions of shared imbalances '''
@@ -286,7 +287,7 @@ class min_3_probes:
         print "number of imbalances >= " + str(self.min_consecutive_probes-2) + " = " + str(t)
                 
 if __name__ == '__main__':
-    for i in [1360]:
+    for i in range(1,200):
         m = min_3_probes()
         m.get_Z_scores(i)
         m.loop_through_chroms()
