@@ -21,7 +21,7 @@ class get_files_and_probes():
     def __init__(self):
         # specify the folder.
         # self.chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
-        self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos2"  # PC
+        self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
         # self.chosenfolder="F:\\fefiles\\1"#USB
 
         # Create an array to store all the files in.
@@ -273,7 +273,6 @@ class Analyse_array():
         Analyse_array().create_ins_statements(subset7, subset8)
         Analyse_array().create_ins_statements(subset8, subset9)
         Analyse_array().create_ins_statements(subset9, no_of_probes)
-        print "len features = " + str(no_of_probes)
         
     def create_ins_statements(self, start, stop):
         """This takes the start and stop of each subset and loops through the all_features list modifying and appending to a SQL statement and then adding to dictionary """
@@ -560,7 +559,7 @@ class Analyse_array():
     def describe_imbalance(self):
         ''' this function takes the dictionary from above, extracts the information as required and pulls more descriptive info from db'''
         
-        print "number of imbalances = " + str(len(shared_imbalance_combined))
+        # print "number of imbalances = " + str(len(shared_imbalance_combined))
         
         # counter for number of segments with more than x probes
         t = 0
@@ -673,8 +672,9 @@ class Analyse_array():
                 else:
                     # print "does not overlap with a previously reported ROI \n"
                     pass
+                
         # report the count of segments with more than minimum number of consecutive probes
-        print "number of imbalances >= " + str(self.min_consecutive_probes - 2) + " = " + str(t)
+        # print "number of imbalances >= " + str(self.min_consecutive_probes - 2) + " = " + str(t)
         
     ####################################################################
     # Perform analysis on ROI
@@ -900,7 +900,7 @@ class Analyse_array():
                     pass
                 else:
                     pass
-                print "redabn= " + str(redabn)
+                # print "redabn= " + str(redabn)
 
         # === repeat for Cutoff2 (95%) ===#
 
@@ -1015,7 +1015,7 @@ class Analyse_array():
             # cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
             cursor.execute(combined_query, (str(arrayID), str(ROI_ID), str(no_of_probes_2_analyse), str(greendel90 + greendel95), str(greendel95), str(reddel90 + reddel95), str(reddel95), str(greendup90 + greendup95), str(greendup95), str(reddup95 + reddup90), str(reddup95), str(greendelabn), str(greendelabn2), str(greendupabn), str(greendupabn2), str(reddelabn), str(reddelabn2), str(reddupabn), str(reddupabn2)))
             db.commit()
-            print "inserted into analysis table: " + str(analysistable)
+            # print "inserted into analysis table: " + str(analysistable)
         except MySQLdb.Error, e:
             db.rollback()
             if e[0] != '###':
@@ -1137,6 +1137,6 @@ if __name__ == "__main__":
         b.loop_through_chroms()
         b.redefine_shared_region()
         b.describe_imbalance()
-        b.GetROI()
+        #b.GetROI()
         b.final_update_stats()
         n = n + 1
