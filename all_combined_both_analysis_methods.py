@@ -21,8 +21,9 @@ class get_files_and_probes():
     def __init__(self):
         # specify the folder.
         # self.chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
-        self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
+        # self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
         # self.chosenfolder="F:\\fefiles\\1"#USB
+        self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\arrayfiles\\250515"
 
         # Create an array to store all the files in.
         self.chosenfiles = []
@@ -48,11 +49,17 @@ class Analyse_array():
         self.probefile = "C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes_all.csv"
         # self.probefile = "C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes.csv"
 
+        # stats table
+        self.stats_table = 'stats_mini'
+        
+        # feparam table
+        self.feparam_table = 'feparam_mini'
+
         # features table
-        self.features_table = 'features2'
+        self.features_table = 'features_mini'
         
         # An insert statement which is appended to in the below create_ins_statements function
-        self.baseinsertstatement = """INSERT INTO """ + self.features_table + """ (Array_ID,FeatureNum,Row,Col,SubTypeMask,ControlType,ProbeName,SystematicName,Chromosome,Start,Stop,PositionX,PositionY,LogRatio,LogRatioError,PValueLogRatio,gProcessedSignal,rProcessedSignal,gProcessedSigError,rProcessedSigError,gMedianSignal,rMedianSignal,gBGMedianSignal,rBGMedianSignal,gBGPixSDev,rBGPixSDev,gIsSaturated,rIsSaturated,gIsFeatNonUnifOL,rIsFeatNonUnifOL,gIsBGNonUnifOL,rIsBGNonUnifOL,gIsFeatPopnOL,rIsFeatPopnOL,gIsBGPopnOL,rIsBGPopnOL,IsManualFlag,gBGSubSignal,rBGSubSignal,gIsPosAndSignif,rIsPosAndSignif,gIsWellAboveBG,rIsWellAboveBG,SpotExtentX,gBGMeanSignal,rBGMeanSignal) values """
+        self.baseinsertstatement = """INSERT INTO """ + self.features_table + """ (Array_ID,ProbeName,gProcessedSignal,rProcessedSignal) values """
         
         # Z score cutoff
         self.Zscore_cutoff = 1.645
@@ -60,8 +67,8 @@ class Analyse_array():
         # number to letter dict
         self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
        
-        # minimum number of consecutive probes (set to min probes + 2)
-        self.min_consecutive_probes = 5
+        # minimum number of consecutive probes
+        self.min_consecutive_probes = 3
         
     # any variables which are only amended in a single function - any others must be defined as global in the script
     # create a dictionary to hold the insert statements and a list of keys which can be used to pull out the insert statements
@@ -174,7 +181,7 @@ class Analyse_array():
         cursor = db.cursor()
 
         # sql statement
-        importedfiles = "select filename from feparam"
+        importedfiles = "select filename from " + self.feparam_table
 
         try:
             cursor.execute(importedfiles)
@@ -198,10 +205,10 @@ class Analyse_array():
             db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
             cursor = db.cursor()
             # sql statement
-            feparam_ins_statement = """insert into feparam (FileName,ProtocolName) values (%s,%s)"""
+            feparam_ins_statement = """insert into """ + self.feparam_table + """ (FileName) values (%s)"""
             time_ins1 = """insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
             try:
-                cursor.execute(feparam_ins_statement, (str(filein), feparam[0]))
+                cursor.execute(feparam_ins_statement, (str(filein)))
                 db.commit()
                 # print "feparam inserted OK"
                 # return the arrayID for the this array (automatically retrieve the Feature_ID from database)
@@ -230,9 +237,9 @@ class Analyse_array():
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
-        stats_ins_statement = """insert into stats(Array_ID,gDarkOffsetAverage,gDarkOffsetMedian,gDarkOffsetStdDev,gDarkOffsetNumPts,gSaturationValue,rDarkOffsetAverage,rDarkOffsetMedian,rDarkOffsetStdDev,rDarkOffsetNumPts,rSaturationValue,gAvgSig2BkgNegCtrl,rAvgSig2BkgNegCtrl,gNumSatFeat,gLocalBGInlierNetAve,gLocalBGInlierAve,gLocalBGInlierSDev,gLocalBGInlierNum,gGlobalBGInlierAve,gGlobalBGInlierSDev,gGlobalBGInlierNum,rNumSatFeat,rLocalBGInlierNetAve,rLocalBGInlierAve,rLocalBGInlierSDev,rLocalBGInlierNum,rGlobalBGInlierAve,rGlobalBGInlierSDev,rGlobalBGInlierNum,gNumFeatureNonUnifOL,gNumPopnOL,gNumNonUnifBGOL,gNumPopnBGOL,gOffsetUsed,gGlobalFeatInlierAve,gGlobalFeatInlierSDev,gGlobalFeatInlierNum,rNumFeatureNonUnifOL,rNumPopnOL,rNumNonUnifBGOL,rNumPopnBGOL,rOffsetUsed,rGlobalFeatInlierAve,rGlobalFeatInlierSDev,rGlobalFeatInlierNum,AllColorPrcntSat,AnyColorPrcntSat,AnyColorPrcntFeatNonUnifOL,AnyColorPrcntBGNonUnifOL,AnyColorPrcntFeatPopnOL,AnyColorPrcntBGPopnOL,TotalPrcntFeatOL,gNumNegBGSubFeat,gNonCtrlNumNegFeatBGSubSig,gLinearDyeNormFactor,gRMSLowessDNF,rNumNegBGSubFeat,rNonCtrlNumNegFeatBGSubSig,rLinearDyeNormFactor,rRMSLowessDNF,gSpatialDetrendRMSFit,gSpatialDetrendRMSFilteredMinusFit,gSpatialDetrendSurfaceArea,gSpatialDetrendVolume,gSpatialDetrendAveFit,rSpatialDetrendRMSFit,rSpatialDetrendRMSFilteredMinusFit,rSpatialDetrendSurfaceArea,rSpatialDetrendVolume,rSpatialDetrendAveFit,gNonCtrlNumSatFeat,gNonCtrl99PrcntNetSig,gNonCtrl50PrcntNetSig,gNonCtrl1PrcntNetSig,gNonCtrlMedPrcntCVBGSubSig,rNonCtrlNumSatFeat,rNonCtrl99PrcntNetSig,rNonCtrl50PrcntNetSig,rNonCtrl1PrcntNetSig,rNonCtrlMedPrcntCVBGSubSig,gNegCtrlNumInliers,gNegCtrlAveNetSig,gNegCtrlSDevNetSig,gNegCtrlAveBGSubSig,gNegCtrlSDevBGSubSig,rNegCtrlNumInliers,rNegCtrlAveNetSig,rNegCtrlSDevNetSig,rNegCtrlAveBGSubSig,rNegCtrlSDevBGSubSig,gAveNumPixOLLo,gAveNumPixOLHi,gPixCVofHighSignalFeat,gNumHighSignalFeat,rAveNumPixOLLo,rAveNumPixOLHi,rPixCVofHighSignalFeat,rNumHighSignalFeat,NonCtrlAbsAveLogRatio,NonCtrlSDevLogRatio,NonCtrlSNRLogRatio,AddErrorEstimateGreen,AddErrorEstimateRed,TotalNumFeatures,NonCtrlNumUpReg,NonCtrlNumDownReg,NumIsNorm,ROIHeight,ROIWidth,CentroidDiffX,CentroidDiffY,NumFoundFeat,MaxNonUnifEdges,MaxSpotNotFoundEdges,gMultDetrendRMSFit,rMultDetrendRMSFit,gMultDetrendSurfaceAverage,rMultDetrendSurfaceAverage,DerivativeOfLogRatioSD,gNonCtrl50PrcntBGSubSig,rNonCtrl50PrcntBGSubSig,gMedPrcntCVProcSignal,rMedPrcntCVProcSignal,geQCMedPrcntCVProcSignal,reQCMedPrcntCVProcSignal,gOutlierFlagger_Auto_FeatB_Term,rOutlierFlagger_Auto_FeatB_Term,gOutlierFlagger_Auto_FeatC_Term,rOutlierFlagger_Auto_FeatC_Term,gOutlierFlagger_Auto_BgndB_Term,rOutlierFlagger_Auto_BgndB_Term,gOutlierFlagger_Auto_BgndC_Term,rOutlierFlagger_Auto_BgndC_Term,OutlierFlagger_FeatChiSq,OutlierFlagger_BgndChiSq,GriddingStatus,IsGoodGrid,NumGeneNonUnifOL,TotalNumberOfReplicatedGenes,gPercentileIntensityProcessedSignal,rPercentileIntensityProcessedSignal,ExtractionStatus,QCMetricResults,gNonCtrlNumWellAboveBG,rNonCtrlNumWellAboveBG,UpRandomnessRatio,DownRandomnessRatio,UpRandomnessSDRatio,DownRandomnessSDRatio,UpRegQualityRatioResult,DownRegQualityRatioResult,ImageDepth,AFHold,gPMTVolts,rPMTVolts,GlassThickness,RestrictionControl,gDDN,rDDN,GridHasBeenOptimized,gNegCtrlSpread,rNegCtrlSpread,Metric_IsGoodGrid,Metric_IsGoodGrid_IsInRange,Metric_AnyColorPrcntFeatNonUnifOL,Metric_AnyColorPrcntFeatNonUnifOL_IsInRange,Metric_DerivativeLR_Spread,Metric_DerivativeLR_Spread_IsInRange,Metric_g_Signal2Noise,Metric_g_Signal2Noise_IsInRange,Metric_g_SignalIntensity,Metric_g_SignalIntensity_IsInRange,Metric_r_Signal2Noise,Metric_r_Signal2Noise_IsInRange,Metric_r_SignalIntensity,Metric_r_SignalIntensity_IsInRange,Metric_gRepro,Metric_gRepro_IsInRange,Metric_g_BGNoise,Metric_g_BGNoise_IsInRange,Metric_rRepro,Metric_rRepro_IsInRange,Metric_r_BGNoise,Metric_r_BGNoise_IsInRange,Metric_RestrictionControl,Metric_RestrictionControl_IsInRange,Metric_gDDN,Metric_gDDN_IsInRange,Metric_rDDN,Metric_rDDN_IsInRange) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
+        stats_ins_statement = """insert into """ + self.stats_table + """ (Array_ID,DerivativeOfLogRatioSD) values (%s,%s)"""
         try:
-            cursor.execute(stats_ins_statement, (str(arrayID), stats[0], stats[1], stats[2], stats[3], stats[4], stats[5], stats[6], stats[7], stats[8], stats[9], stats[10], stats[11], stats[12], stats[13], stats[14], stats[15], stats[16], stats[17], stats[18], stats[19], stats[20], stats[21], stats[22], stats[23], stats[24], stats[25], stats[26], stats[27], stats[28], stats[29], stats[30], stats[31], stats[32], stats[33], stats[34], stats[35], stats[36], stats[37], stats[38], stats[39], stats[40], stats[41], stats[42], stats[43], stats[44], stats[45], stats[46], stats[47], stats[48], stats[49], stats[50], stats[51], stats[52], stats[53], stats[54], stats[55], stats[56], stats[57], stats[58], stats[59], stats[60], stats[61], stats[62], stats[63], stats[64], stats[65], stats[66], stats[67], stats[68], stats[69], stats[70], stats[71], stats[72], stats[73], stats[74], stats[75], stats[76], stats[77], stats[78], stats[79], stats[80], stats[81], stats[82], stats[83], stats[84], stats[85], stats[86], stats[87], stats[88], stats[89], stats[90], stats[91], stats[92], stats[93], stats[94], stats[95], stats[96], stats[97], stats[98], stats[99], stats[100], stats[101], stats[102], stats[103], stats[104], stats[105], stats[106], stats[107], stats[108], stats[109], stats[110], stats[111], stats[112], stats[113], stats[114], stats[115], stats[116], stats[117], stats[118], stats[119], stats[120], stats[121], stats[122], stats[123], stats[124], stats[125], stats[126], stats[127], stats[128], stats[129], stats[130], stats[131], stats[132], stats[133], stats[134], stats[135], stats[136], stats[137], stats[138], stats[139], stats[140], stats[141], stats[142], stats[143], stats[144], stats[145], stats[146], stats[147], stats[148], stats[149], stats[150], stats[151], stats[152], stats[153], stats[154], stats[155], stats[156], stats[157], stats[158], stats[159], stats[160], stats[161], stats[162], stats[163], stats[164], stats[165], stats[166], stats[167], stats[168], stats[169], stats[170], stats[171], stats[172], stats[173], stats[174], stats[175], stats[176], stats[177], stats[178], stats[179], stats[180], stats[181], stats[182], stats[183], stats[184], stats[185], stats[186], stats[187], stats[188]))
+            cursor.execute(stats_ins_statement, (str(arrayID), stats[117]))
             db.commit()
             # print "stats insert was a success"
         except MySQLdb.Error, e:
@@ -290,26 +297,32 @@ class Analyse_array():
 
                 # As elements 5-7 are strings need to add quotations so SQL will accept it
                 probename = "\"" + line[5] + "\""
-                systematicname = "\"" + line[6] + "\""
+                # systematicname = "\"" + line[6] + "\""
+                
+                # name the variables want to put into db
+                gProcessedSignal = str(line[15])
+                rProcessedSignal = str(line[16])
 
-                # elements 7-9 are complicated as None needs changing to Null for the control probes which don't have genomic location (Can't do this when extending above)
-                if line[7] is None:
-                    Chromosome = "NULL"
-                else:
-                    Chromosome = "\"" + line[7] + "\""
-
-                if line[8] is None:
-                    line[8] = "NULL"
-                else:
-                    line[8] = line[8]
-
-                if line[9] is None:
-                    line[9] = "NULL"
-                else:
-                    line[9] = line[9]
+################################################################################
+#                 # elements 7-9 are complicated as None needs changing to Null for the control probes which don't have genomic location (Can't do this when extending above)
+#                 if line[7] is None:
+#                     Chromosome = "NULL"
+#                 else:
+#                     Chromosome = "\"" + line[7] + "\""
+#
+#                 if line[8] is None:
+#                     line[8] = "NULL"
+#                 else:
+#                     line[8] = line[8]
+#
+#                 if line[9] is None:
+#                     line[9] = "NULL"
+#                 else:
+#                     line[9] = line[9]
+################################################################################
 
                 # use .join() to concatenate all elements into a string seperated by ','
-                to_add = ",".join((str(arrayID), str(line[0]), str(line[1]), str(line[2]), str(line[3]), str(line[4]), probename, systematicname, Chromosome, str(line[8]), str(line[9]), str(line[10]), str(line[11]), str(line[12]), str(line[13]), str(line[14]), str(line[15]), str(line[16]), str(line[17]), str(line[18]), str(line[19]), str(line[20]), str(line[21]), str(line[22]), str(line[23]), str(line[24]), str(line[25]), str(line[26]), str(line[27]), str(line[28]), str(line[29]), str(line[30]), str(line[31]), str(line[32]), str(line[33]), str(line[34]), str(line[35]), str(line[36]), str(line[37]), str(line[38]), str(line[39]), str(line[40]), str(line[41]), str(line[42]), str(line[43]), str(line[44])))
+                to_add = ",".join((str(arrayID), probename, gProcessedSignal, rProcessedSignal))
 
                 # Append the values to the end of the insert statement
                 insstatement = insstatement + "(" + to_add + "),"
@@ -319,24 +332,31 @@ class Analyse_array():
                 line = features[i]
                 line.remove('DATA')
                 probename = "\"" + line[5] + "\""
-                systematicname = "\"" + line[6] + "\""
+                # systematicname = "\"" + line[6] + "\""
+                
+                # name the variables want to put into db
+                gProcessedSignal = str(line[15])
+                rProcessedSignal = str(line[16])
 
-                if line[7] is None:
-                    Chromosome = "NULL"
-                else:
-                    Chromosome = "\"" + line[7] + "\""
+################################################################################
+#                 if line[7] is None:
+#                     Chromosome = "NULL"
+#                 else:
+#                     Chromosome = "\"" + line[7] + "\""
+#
+#                 if line[8] is None:
+#                     line[8] = "NULL"
+#                 else:
+#                     line[8] = line[8]
+#
+#                 if line[9] is None:
+#                     line[9] = "NULL"
+#                 else:
+#                     line[9] = line[9]
+################################################################################
 
-                if line[8] is None:
-                    line[8] = "NULL"
-                else:
-                    line[8] = line[8]
-
-                if line[9] is None:
-                    line[9] = "NULL"
-                else:
-                    line[9] = line[9]
-
-                to_add = ",".join((str(arrayID), str(line[0]), str(line[1]), str(line[2]), str(line[3]), str(line[4]), probename, systematicname, Chromosome, str(line[8]), str(line[9]), str(line[10]), str(line[11]), str(line[12]), str(line[13]), str(line[14]), str(line[15]), str(line[16]), str(line[17]), str(line[18]), str(line[19]), str(line[20]), str(line[21]), str(line[22]), str(line[23]), str(line[24]), str(line[25]), str(line[26]), str(line[27]), str(line[28]), str(line[29]), str(line[30]), str(line[31]), str(line[32]), str(line[33]), str(line[34]), str(line[35]), str(line[36]), str(line[37]), str(line[38]), str(line[39]), str(line[40]), str(line[41]), str(line[42]), str(line[43]), str(line[44])))
+                to_add = ",".join((str(arrayID), probename, gProcessedSignal, rProcessedSignal))
+                
                 # No comma at end
                 insstatement = insstatement + "(" + to_add + ")"
 
@@ -386,7 +406,7 @@ class Analyse_array():
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
 
-        # statement to update the paramtest_features table to populate the probekey (numeric keys to speed up subsequent steps)
+        # statement to update the features table to populate the probekey (numeric keys to speed up subsequent steps)
         update_probeKey = """update """ + self.features_table + """ t, probeorder set t.probekey=probeorder.probekey where probeorder.probename=t.probename and t.array_ID=%s"""
 
         # SQL statement which captures or creates the values required
@@ -568,8 +588,8 @@ class Analyse_array():
         for i in shared_imbalance_combined:
             
             # shared_imbalance_combined[i] is at least (chrom, -1/1 (loss/gain),probe 1 probeorder_ID,probe 2 probeorder_ID,probe 3 probeorder_ID)
-            # minimum no of probes in abberation using min no of probes +2 (set in __init__)
-            if len(shared_imbalance_combined[i]) >= self.min_consecutive_probes:
+            # minimum no of probes in abberation using min no of probes (set in __init__) plus 2 to take into account chrom and +1/-1 in list
+            if len(shared_imbalance_combined[i]) >= self.min_consecutive_probes + 2:
                 
                 # add counter
                 t = t + 1
@@ -608,15 +628,17 @@ class Analyse_array():
                 start = int(region[0][0])
                 stop = int(region[1][0])
     
-                # text statement for loss or gain
-                if gain_loss > 0:
-                    state = "gain"
-                elif gain_loss < 0:
-                    state = "loss"
-    
-                # what to print to screen
-                # print "shared imbalance = chr" + str(chrom) + ":" + str(start) + "-" + str(stop) + "\tnumber of probes = " + str(num_of_probes) + "\tstate=" + state
-                # print "Probeorder_IDs: " + str(firstprobe) + "-" + str(lastprobe)
+    ############################################################################
+    #             # text statement for loss or gain
+    #             if gain_loss > 0:
+    #                 state = "gain"
+    #             elif gain_loss < 0:
+    #                 state = "loss"
+    #
+    #             # what to print to screen
+    #             print "shared imbalance = chr" + str(chrom) + ":" + str(start) + "-" + str(stop) + "\tnumber of probes = " + str(num_of_probes) + "\tstate=" + state
+    #             print "Probeorder_IDs: " + str(firstprobe) + "-" + str(lastprobe)
+    ############################################################################
                 
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -663,12 +685,15 @@ class Analyse_array():
                         probeID = probes[i][0]
                         list_of_probes.append(probeID)
                     
-                    # get first and last probe
-                    first_probe = list_of_probes[0]
-                    last_probe = list_of_probes[-1]
-                         
-                    # but if there is print the ROI_ID
+                    ############################################################
+                    # # get first and last probe
+                    # first_probe = list_of_probes[0]
+                    # last_probe = list_of_probes[-1]
+                    #
+                    # # but if there is print the ROI_ID
                     # print "overlaps with previously reported ROI\t ROI_ID:" + str(overlap[0][0]) + "\trange of probes in ROI = " + str(first_probe) + "-" + str(last_probe) + "\n"
+                    ############################################################
+                    
                 else:
                     # print "does not overlap with a previously reported ROI \n"
                     pass
@@ -714,8 +739,8 @@ class Analyse_array():
         '''This function finds all the Z scores for any probes within this roi for this array and passes into the function which analyses the results'''
 
         # select the arrayID, green and red Z score for all probes within the ROI for this array.
-        getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from paramtest_features f, roi r where substring(f.Chromosome,4)=r.Chromosome and f.`stop` > r.start and f.`Start` < r.stop and ROI_ID = """
-        getZscorespart2 = """ and f.array_ID="""
+        getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from """ + self.features_table + """ f, roi r, probeorder p where f.ProbeKey = p.ProbeKey and p.ChromosomeNumber = r.Chromosome and p.`stop` > r.start and p.`Start` < r.stop and ROI_ID = """
+        getZscorespart2 = """ and f.array_ID = """
         combinedquery = getZscorespart1 + str(ROI_ID) + getZscorespart2 + str(array_ID)
 
         # open connection to database and run SQL select statement
@@ -1126,6 +1151,8 @@ if __name__ == "__main__":
     for i in a.chosenfiles:
         b = Analyse_array()
         print "file " + str(n) + " of " + str(len(a.chosenfiles))
+        
+        # insert FE file to db
         b.get_list_of_target_probes()
         b.read_file(i)
         b.insert_feparam()
@@ -1133,10 +1160,15 @@ if __name__ == "__main__":
         b.feed_create_ins_statements()
         b.insert_features()
         b.CalculateLogRatios()
+        
+        # perform the analysis on consecutive probes
         b.get_Z_scores_consec()
         b.loop_through_chroms()
         b.redefine_shared_region()
         b.describe_imbalance()
-        #b.GetROI()
+        
+        # perform analysis on defined regions (getROI calls subsequent modules)
+        # b.GetROI()
+        
         b.final_update_stats()
         n = n + 1
