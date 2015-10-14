@@ -18,6 +18,7 @@ from datetime import datetime
 
 
 class get_files_and_probes():
+
     def __init__(self):
         # specify the folder.
         # self.chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
@@ -37,6 +38,7 @@ class get_files_and_probes():
 
 
 class Analyse_array():
+
     def __init__(self):
         # define parameters used when connecting to database
         self.host = "localhost"
@@ -44,42 +46,42 @@ class Analyse_array():
         self.username = "aled"
         self.passwd = "aled"
         self.database = "dev_featextr"
-        
+
         # probe file
         self.probefile = "C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes_all.csv"
         # self.probefile = "C:\\Users\\Aled\\Google Drive\\MSc project\\targetprobes.csv"
 
         # stats table
         self.stats_table = 'stats_mini'
-        
+
         # feparam table
         self.feparam_table = 'feparam_mini'
 
         # features table
         self.features_table = 'features_mini'
-        
+
         # An insert statement which is appended to in the below create_ins_statements function
         self.baseinsertstatement = """INSERT INTO """ + self.features_table + """ (Array_ID,ProbeName,gProcessedSignal,rProcessedSignal) values """
-        
+
         # Z score cutoff
         self.Zscore_cutoff = 1.645
-        
+
         # number to letter dict
         self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
-       
+
         # minimum number of consecutive probes
         self.min_consecutive_probes = 3
-        
+
     # any variables which are only amended in a single function - any others must be defined as global in the script
     # create a dictionary to hold the insert statements and a list of keys which can be used to pull out the insert statements
     insertstatements = {}
 
     # insert feparams function
     imported_files = []
-    
-    # create an empty array for all the probes that are within ROI (global)
+
+    # create empty arrays for all the probes that are to be analysed, one for duplicated probes
     list_of_probes = []
-    
+
     # read files lists
     filein = ''  # file in
 
@@ -89,17 +91,34 @@ class Analyse_array():
     # shared imbalance results
     shared_imbalance = []
     shared_imbalance_combined = {}
-        
+
     def get_list_of_target_probes(self):
-        '''This module reads a file with all the probes which fall within a ROI and fill the list_of_probes.'''
-        # open file of target probes
-        fileofprobes = open(self.probefile, 'r')
-        # append to list after removing newline
-        for line in fileofprobes:
-            self.list_of_probes.append(line.rstrip())
+        '''This module reads the probeorder table which creates a list of all probes.'''
+        # open connection to database and run SQL insert statement
+        db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
+        cursor = db.cursor()
+
+        # sql statement for distinct probenames
+        list_of_probes_query = "select distinct probename from probeorder"
+
+        try:
+            cursor.execute(list_of_probes_query)
+            probes = cursor.fetchall()
+        except MySQLdb.Error, e:
+            db.rollback()
+            print "fail - unable to get list of probes"
+            if e[0] != '###':
+                raise
+        finally:
+            db.close()
         
+        # add query result to list
+        for i in probes:
+            self.list_of_probes.append(i[0])
+
     def read_file(self, filein2):
-        ''' This function recieves a FE file name (one at a time), opens it, adds information/selected probes to lists and passes these to functions which perform insert statements '''
+        ''' This function receives a FE file name (one at a time), opens it, adds information/selected probes to lists and passes these to functions /
+        which perform insert statements '''
         global feparam
         feparam = []
         global stats
@@ -108,12 +127,15 @@ class Analyse_array():
         features = []
         global filein
         filein = filein2
-        
+
         # combine the specified folder and one file from the for loop which instigates this program
         file2open = get_files_and_probes().chosenfolder + "\\" + filein
 
         # open file
         wholefile = open(file2open, 'r')
+        
+        # features_dict
+        features_dict = {}
         
         # loop through file, selecting the FEparams (line 3), stats (line 7) and then all probes(features rows 11 onwards)
         for i, line in enumerate(wholefile):  # enumerate allows a line to be identified by row number
@@ -132,16 +154,25 @@ class Analyse_array():
             if i >= 10:
                 # splits the line on tab and appends this to a list
                 splitfeatures = line.split('\t')
-                # print splitfeatures[6]
-                # print get_files_and_probes().list_of_probes
+                # Some probes are on the array in duplicate. TO check this the probes are put into a dictionary with the probe name as a key.
+                # if the probe has already been seen then the two signal intensities are averaged.
                 if splitfeatures[6] in self.list_of_probes:
-                    features.append(splitfeatures)
+                    if splitfeatures[6] in features_dict:
+                        features_dict[splitfeatures[6]][13] = (float(features_dict[splitfeatures[6]][13]) + float(splitfeatures[13])) / 2.0
+                        features_dict[splitfeatures[6]][14] = (float(features_dict[splitfeatures[6]][14]) + float(splitfeatures[14])) / 2.0
+                    # if probe hasn't been seen then add the probe to dictionary
+                    else:
+                        features_dict[splitfeatures[6]] = splitfeatures
             else:
                 pass
 
         # close file
         wholefile.close()
-
+        
+        # loop through the dictionary and add to the features list
+        for i in features_dict:
+            features.append(features_dict[i])
+        
         # for each feature firstly remove the \n using pop to remove the last item, replace and then append
         for i in features:
             if len(i) > 1:
@@ -164,10 +195,10 @@ class Analyse_array():
                 i.insert(8, splitgenloc[0])
                 i.insert(9, splitgenloc[1])
                 i.insert(10, splitgenloc[2])
-        
+
     def insert_feparam(self):
         ''' this function receives arrays containing all of the information within a FE file. This function inserts into feparam table and creates a unique Array_ID'''
-        
+
         # use pop to remove the newline from final element in list
         with_newline = feparam.pop()
         no_newline = with_newline.replace('\n', '')
@@ -199,7 +230,7 @@ class Analyse_array():
 
         if filein in self.imported_files:
             pass
-        
+
         else:
             # open connection to database and run SQL insert statement
             db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -226,7 +257,6 @@ class Analyse_array():
 
     def insert_stats(self):
         '''this function receives the arrays to be inserted into the stats and features tables and the arrayID. This module performs the insert to the stats table'''
-
         # remove final element and remove new line
         stats_with_newline = stats.pop()
         no_newline = stats_with_newline.replace('\n', '')
@@ -249,14 +279,14 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-        
+
     def feed_create_ins_statements(self):
         '''This function takes the list of features,breaks it into 10 equal chunks and then passes this to the create_ins_statement function
         10 insert statements was deemed quicker than the creation of a csv file or a single insert statement'''
-        
+
         # calculate number of features
         no_of_probes = len(features)
-        
+
         # using the total number of probes break down into ten subsets. use math.ceil to round up to ensure all probes are included.
         subset0 = 0
         subset1 = int(math.ceil((no_of_probes / 10)))
@@ -280,7 +310,7 @@ class Analyse_array():
         Analyse_array().create_ins_statements(subset7, subset8)
         Analyse_array().create_ins_statements(subset8, subset9)
         Analyse_array().create_ins_statements(subset9, no_of_probes)
-        
+
     def create_ins_statements(self, start, stop):
         """This takes the start and stop of each subset and loops through the all_features list modifying and appending to a SQL statement and then adding to dictionary """
         # create a copy of the insert statement
@@ -298,13 +328,13 @@ class Analyse_array():
                 # As elements 5-7 are strings need to add quotations so SQL will accept it
                 probename = "\"" + line[5] + "\""
                 # systematicname = "\"" + line[6] + "\""
-                
+
                 # name the variables want to put into db
                 gProcessedSignal = str(line[15])
                 rProcessedSignal = str(line[16])
 
 ################################################################################
-#                 # elements 7-9 are complicated as None needs changing to Null for the control probes which don't have genomic location (Can't do this when extending above)
+# elements 7-9 are complicated as None needs changing to Null for the control probes which don't have genomic location (Can't do this when extending above)
 #                 if line[7] is None:
 #                     Chromosome = "NULL"
 #                 else:
@@ -333,7 +363,7 @@ class Analyse_array():
                 line.remove('DATA')
                 probename = "\"" + line[5] + "\""
                 # systematicname = "\"" + line[6] + "\""
-                
+
                 # name the variables want to put into db
                 gProcessedSignal = str(line[15])
                 rProcessedSignal = str(line[16])
@@ -356,13 +386,13 @@ class Analyse_array():
 ################################################################################
 
                 to_add = ",".join((str(arrayID), probename, gProcessedSignal, rProcessedSignal))
-                
+
                 # No comma at end
                 insstatement = insstatement + "(" + to_add + ")"
 
                 # create a string which is ins and start number - this allows the insert statement to be named for use below
                 ins_number = "ins" + str(start)
-                
+
                 # Enter the insert statement into the dictionary setup above with key=insnumber and value the sql statement (insstatement)
                 self.insertstatements[ins_number] = insstatement
                 # print self.insertstatements
@@ -428,13 +458,13 @@ class Analyse_array():
         finally:
             db.close()
             # pass
-    
+
     ####################################################################
     # Perform analysis on ROI
     ####################################################################
-    
+
     def get_Z_scores_consec(self):
-        
+
         global Zscore_results
         Zscore_results = {}
         # print "Analysing array: " + str(array_ID)
@@ -578,39 +608,39 @@ class Analyse_array():
 
     def describe_imbalance(self):
         ''' this function takes the dictionary from above, extracts the information as required and pulls more descriptive info from db'''
-        
+
         # print "number of imbalances = " + str(len(shared_imbalance_combined))
-        
+
         # counter for number of segments with more than x probes
         t = 0
-        
+
         # for each chromosome in dict
         for i in shared_imbalance_combined:
-            
+
             # shared_imbalance_combined[i] is at least (chrom, -1/1 (loss/gain),probe 1 probeorder_ID,probe 2 probeorder_ID,probe 3 probeorder_ID)
             # minimum no of probes in abberation using min no of probes (set in __init__) plus 2 to take into account chrom and +1/-1 in list
             if len(shared_imbalance_combined[i]) >= self.min_consecutive_probes + 2:
-                
+
                 # add counter
                 t = t + 1
-                
+
                 # define the chromosome, first and last probe, gain/loss and number of probes
                 chrom = shared_imbalance_combined[i][0]
                 firstprobe = shared_imbalance_combined[i][2]
                 lastprobe = shared_imbalance_combined[i][-1]
                 gain_loss = shared_imbalance_combined[i][1]
                 num_of_probes = len(shared_imbalance_combined[i]) - 2
-    
+
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
                 cursor = db.cursor()
-    
+
                 # sql statement to insert to db
                 insert_analysis = "insert into consecutive_probes_analysis (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes) values (%s,%s,%s,%s,%s,%s)"
-                
+
                 # sql statement to get the coordinates from the probeorder_IDS
                 get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
-    
+
                 try:
                     cursor.execute(get_region, (firstprobe, lastprobe))
                     region = cursor.fetchall()
@@ -623,27 +653,27 @@ class Analyse_array():
                         raise
                 finally:
                     db.close()
-    
+
                 # put start and stop into variables
                 start = int(region[0][0])
                 stop = int(region[1][0])
-    
+
     ############################################################################
-    #             # text statement for loss or gain
+    # text statement for loss or gain
     #             if gain_loss > 0:
     #                 state = "gain"
     #             elif gain_loss < 0:
     #                 state = "loss"
     #
-    #             # what to print to screen
+    # what to print to screen
     #             print "shared imbalance = chr" + str(chrom) + ":" + str(start) + "-" + str(stop) + "\tnumber of probes = " + str(num_of_probes) + "\tstate=" + state
     #             print "Probeorder_IDs: " + str(firstprobe) + "-" + str(lastprobe)
     ############################################################################
-                
+
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
                 cursor = db.cursor()
-                
+
                 # sql statement to see if segment overlaps with any entries from ROI table
                 overlapping_a_ROI = "select ROI_ID from roi where ChromosomeNumber= %s and `Start` <= %s and `Stop`>=%s"
                 try:
@@ -656,16 +686,16 @@ class Analyse_array():
                         raise
                 finally:
                     db.close()
-    
+
                 # if overlap is empty suggests there is no overlapping ROI in table
                 if len(overlap) > 0:
-                    
+
                     roi_ID = overlap[0][0]
-                    
+
                     # open connection to database and run SQL insert statement
                     db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
                     cursor = db.cursor()
-        
+
                     # sql statement to see if segment overlaps with any entries from ROI table
                     probes_in_ROI = "select Probeorder_ID from probeorder, roi where roi_ID = %s and probeorder.`Start` < roi.`stop` and probeorder.`Stop` > roi.`Start` and probeorder.ChromosomeNumber=roi.ChromosomeNumber order by Probeorder_ID "
                     try:
@@ -678,29 +708,29 @@ class Analyse_array():
                             raise
                     finally:
                         db.close()
-                    
+
                     # go through result of query and append the probes to a list
                     list_of_probes = []
                     for i in range(0, len(probes)):
                         probeID = probes[i][0]
                         list_of_probes.append(probeID)
-                    
+
                     ############################################################
-                    # # get first and last probe
+                    # get first and last probe
                     # first_probe = list_of_probes[0]
                     # last_probe = list_of_probes[-1]
                     #
-                    # # but if there is print the ROI_ID
+                    # but if there is print the ROI_ID
                     # print "overlaps with previously reported ROI\t ROI_ID:" + str(overlap[0][0]) + "\trange of probes in ROI = " + str(first_probe) + "-" + str(last_probe) + "\n"
                     ############################################################
-                    
+
                 else:
                     # print "does not overlap with a previously reported ROI \n"
                     pass
-                
+
         # report the count of segments with more than minimum number of consecutive probes
         # print "number of imbalances >= " + str(self.min_consecutive_probes - 2) + " = " + str(t)
-        
+
     ####################################################################
     # Perform analysis on ROI
     ####################################################################
@@ -758,7 +788,7 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-        
+
         # this creates a tuple for ((arrayID,greenZscore,RedZscore),(arrayID,greenZscore,RedZscore),...)
 
         # create a list for red and green Z scores
@@ -1118,7 +1148,7 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-        
+
         global Zscore_results
         global shared_imbalance
         global shared_imbalance_combined
@@ -1128,7 +1158,7 @@ class Analyse_array():
         global stats
         global list_of_probes
         global filein
-        
+
         Zscore_results = {}
         shared_imbalance = []
         shared_imbalance_combined = {}
@@ -1151,7 +1181,7 @@ if __name__ == "__main__":
     for i in a.chosenfiles:
         b = Analyse_array()
         print "file " + str(n) + " of " + str(len(a.chosenfiles))
-        
+
         # insert FE file to db
         b.get_list_of_target_probes()
         b.read_file(i)
@@ -1160,15 +1190,15 @@ if __name__ == "__main__":
         b.feed_create_ins_statements()
         b.insert_features()
         b.CalculateLogRatios()
-        
+
         # perform the analysis on consecutive probes
         b.get_Z_scores_consec()
         b.loop_through_chroms()
         b.redefine_shared_region()
         b.describe_imbalance()
-        
+
         # perform analysis on defined regions (getROI calls subsequent modules)
         # b.GetROI()
-        
+
         b.final_update_stats()
         n = n + 1
