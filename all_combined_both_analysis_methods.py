@@ -474,7 +474,7 @@ class Analyse_array():
         cursor = db.cursor()
 
         # sql statement
-        get_zscores = """select greensigintzscore, redsigintzscore, Probeorder_ID, probeorder.ChromosomeNumber from """ + self.features_table + """ f, probeorder where Array_ID = %s and probeorder.ProbeKey=f.ProbeKey order by Probeorder_ID"""
+        get_zscores = """select greensigintzscore, redsigintzscore, Probeorder_ID, probeorder.ChromosomeNumber from """ + self.features_table + """ f, probeorder where Array_ID = %s and probeorder.ProbeKey=f.ProbeKey and probeorder.ignore_if_duplicated != 1 order by Probeorder_ID"""
         try:
             cursor.execute(get_zscores, (arrayID))
             Zscores = cursor.fetchall()
