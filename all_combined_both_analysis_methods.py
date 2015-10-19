@@ -23,11 +23,24 @@ class get_files_and_probes():
         # specify the folder.
         # self.chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
         # self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
-        # self.chosenfolder="F:\\fefiles\\1"#USB
-        self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\arrayfiles\\250515"
+        # self.chosenfolder = "I:\\191015"  # USB
+        self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\zscoretest"
 
         # Create an array to store all the files in.
         self.chosenfiles = []
+        
+        # define parameters used when connecting to database
+        self.host = "localhost"
+        self.port = int(3307)
+        self.username = "aled"
+        self.passwd = "aled"
+        self.database = "dev_featextr"
+        
+        # feparam table
+        self.feparam_table = 'feparam_mini'
+        
+        # filenames
+        self.filenames=[]
 
     def get_files(self):
         '''loops through the specified folder (above) and adds any .txt files to this array(looking for all FE files)'''
@@ -35,6 +48,29 @@ class get_files_and_probes():
         for afile in os.listdir(self.chosenfolder):
             if afile.endswith(".txt"):
                 self.chosenfiles.append(afile)
+                
+    def get_arrays_in_db(self):
+        '''gets the filenames from feparam table'''
+        # open connection to database and run SQL insert statement
+        db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
+        cursor = db.cursor()
+
+        # sql statement
+        importedfiles = "select filename from " + self.feparam_table
+
+        try:
+            cursor.execute(importedfiles)
+            importedfilenames = cursor.fetchall()
+        except MySQLdb.Error, e:
+            db.rollback()
+            print "fail - unable to get list of imported filenames"
+            if e[0] != '###':
+                raise
+        finally:
+            db.close()
+
+        for i in importedfilenames:
+            self.filenames.append(i[0])
 
 
 class Analyse_array():
@@ -60,11 +96,14 @@ class Analyse_array():
         # features table
         self.features_table = 'features_mini'
 
+        # cpa table
+        self.CPA_table = "consecutive_probes_analysis"
+
         # An insert statement which is appended to in the below create_ins_statements function
         self.baseinsertstatement = """INSERT INTO """ + self.features_table + """ (Array_ID,ProbeName,gProcessedSignal,rProcessedSignal) values """
 
         # Z score cutoff
-        self.Zscore_cutoff = 1.645
+        self.Zscore_cutoff = 2.374
 
         # number to letter dict
         self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
@@ -111,7 +150,7 @@ class Analyse_array():
                 raise
         finally:
             db.close()
-        
+
         # add query result to list
         for i in probes:
             self.list_of_probes.append(i[0])
@@ -133,10 +172,10 @@ class Analyse_array():
 
         # open file
         wholefile = open(file2open, 'r')
-        
+
         # features_dict
         features_dict = {}
-        
+
         # loop through file, selecting the FEparams (line 3), stats (line 7) and then all probes(features rows 11 onwards)
         for i, line in enumerate(wholefile):  # enumerate allows a line to be identified by row number
             if i == 2:
@@ -168,11 +207,11 @@ class Analyse_array():
 
         # close file
         wholefile.close()
-        
+
         # loop through the dictionary and add to the features list
         for i in features_dict:
             features.append(features_dict[i])
-        
+
         # for each feature firstly remove the \n using pop to remove the last item, replace and then append
         for i in features:
             if len(i) > 1:
@@ -210,50 +249,25 @@ class Analyse_array():
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
-
         # sql statement
-        importedfiles = "select filename from " + self.feparam_table
-
+        feparam_ins_statement = """insert into """ + self.feparam_table + """ (FileName) values (%s)"""
+        time_ins1 = """insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
         try:
-            cursor.execute(importedfiles)
-            importedfilenames = cursor.fetchall()
+            cursor.execute(feparam_ins_statement, (str(filein)))
+            db.commit()
+            # print "feparam inserted OK"
+            # return the arrayID for the this array (automatically retrieve the Feature_ID from database)
+            global arrayID
+            arrayID = cursor.lastrowid
+            cursor.execute(time_ins1, (str(arrayID), str(datetime.now().strftime('%H:%M:%S'))))
+            db.commit()
         except MySQLdb.Error, e:
             db.rollback()
-            print "fail - unable to get list of imported filenames"
+            print "fail - unable to enter feparam information"
             if e[0] != '###':
                 raise
         finally:
             db.close()
-
-        for i in importedfilenames:
-            self.imported_files.append(i[0])
-
-        if filein in self.imported_files:
-            pass
-
-        else:
-            # open connection to database and run SQL insert statement
-            db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-            cursor = db.cursor()
-            # sql statement
-            feparam_ins_statement = """insert into """ + self.feparam_table + """ (FileName) values (%s)"""
-            time_ins1 = """insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
-            try:
-                cursor.execute(feparam_ins_statement, (str(filein)))
-                db.commit()
-                # print "feparam inserted OK"
-                # return the arrayID for the this array (automatically retrieve the Feature_ID from database)
-                global arrayID
-                arrayID = cursor.lastrowid
-                cursor.execute(time_ins1, (str(arrayID), str(datetime.now().strftime('%H:%M:%S'))))
-                db.commit()
-            except MySQLdb.Error, e:
-                db.rollback()
-                print "fail - unable to enter feparam information"
-                if e[0] != '###':
-                    raise
-            finally:
-                db.close()
 
     def insert_stats(self):
         '''this function receives the arrays to be inserted into the stats and features tables and the arrayID. This module performs the insert to the stats table'''
@@ -267,9 +281,9 @@ class Analyse_array():
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
-        stats_ins_statement = """insert into """ + self.stats_table + """ (Array_ID,DerivativeOfLogRatioSD) values (%s,%s)"""
+        stats_ins_statement = """insert into """ + self.stats_table + """ (Array_ID,DerivativeOfLogRatioSD,Metric_g_SignalIntensity,Metric_r_SignalIntensity) values (%s,%s,%s,%s)"""
         try:
-            cursor.execute(stats_ins_statement, (str(arrayID), stats[117]))
+            cursor.execute(stats_ins_statement, (str(arrayID), stats[117], stats[169], stats[173]))
             db.commit()
             # print "stats insert was a success"
         except MySQLdb.Error, e:
@@ -464,17 +478,16 @@ class Analyse_array():
     ####################################################################
 
     def get_Z_scores_consec(self):
-
         global Zscore_results
         Zscore_results = {}
-        # print "Analysing array: " + str(array_ID)
+        # print "Analysing array: " + str(arrayID)
 
         # open connection to database and run SQL statement to extract the Z scores, the probe orderID and chromosome
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
 
         # sql statement
-        get_zscores = """select greensigintzscore, redsigintzscore, Probeorder_ID, probeorder.ChromosomeNumber from """ + self.features_table + """ f, probeorder where Array_ID = %s and probeorder.ProbeKey=f.ProbeKey and probeorder.ignore_if_duplicated != 1 order by Probeorder_ID"""
+        get_zscores = """select greensigintzscore, redsigintzscore, Probeorder_ID, probeorder.ChromosomeNumber from """ + self.features_table + """ f, probeorder where Array_ID = %s and probeorder.ProbeKey=f.ProbeKey and probeorder.ignore_if_duplicated is NULL order by Probeorder_ID"""
         try:
             cursor.execute(get_zscores, (arrayID))
             Zscores = cursor.fetchall()
@@ -607,9 +620,7 @@ class Analyse_array():
                             shared_imbalance_combined[dict_key2] = shared_imbalance[i]
 
     def describe_imbalance(self):
-        ''' this function takes the dictionary from above, extracts the information as required and pulls more descriptive info from db'''
-
-        # print "number of imbalances = " + str(len(shared_imbalance_combined))
+        ''' this function populates the CPA table'''
 
         # counter for number of segments with more than x probes
         t = 0
@@ -636,7 +647,7 @@ class Analyse_array():
                 cursor = db.cursor()
 
                 # sql statement to insert to db
-                insert_analysis = "insert into consecutive_probes_analysis (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes) values (%s,%s,%s,%s,%s,%s)"
+                insert_analysis = "insert into " + self.CPA_table + " (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes,Cutoff) values (%s,%s,%s,%s,%s,%s,%s)"
 
                 # sql statement to get the coordinates from the probeorder_IDS
                 get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
@@ -644,7 +655,7 @@ class Analyse_array():
                 try:
                     cursor.execute(get_region, (firstprobe, lastprobe))
                     region = cursor.fetchall()
-                    cursor.execute(insert_analysis, (arrayID, chrom, firstprobe, lastprobe, gain_loss, num_of_probes))
+                    cursor.execute(insert_analysis, (arrayID, chrom, firstprobe, lastprobe, gain_loss, num_of_probes, self.Zscore_cutoff))
                     db.commit()
                 except MySQLdb.Error, e:
                     db.rollback()
@@ -654,83 +665,7 @@ class Analyse_array():
                 finally:
                     db.close()
 
-                # put start and stop into variables
-                start = int(region[0][0])
-                stop = int(region[1][0])
-
-    ############################################################################
-    # text statement for loss or gain
-    #             if gain_loss > 0:
-    #                 state = "gain"
-    #             elif gain_loss < 0:
-    #                 state = "loss"
-    #
-    # what to print to screen
-    #             print "shared imbalance = chr" + str(chrom) + ":" + str(start) + "-" + str(stop) + "\tnumber of probes = " + str(num_of_probes) + "\tstate=" + state
-    #             print "Probeorder_IDs: " + str(firstprobe) + "-" + str(lastprobe)
-    ############################################################################
-
-                # open connection to database and run SQL insert statement
-                db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-                cursor = db.cursor()
-
-                # sql statement to see if segment overlaps with any entries from ROI table
-                overlapping_a_ROI = "select ROI_ID from roi where ChromosomeNumber= %s and `Start` <= %s and `Stop`>=%s"
-                try:
-                    cursor.execute(overlapping_a_ROI, (chrom, start, stop))
-                    overlap = cursor.fetchall()
-                except MySQLdb.Error, e:
-                    db.rollback()
-                    print "fail - unable to access ROI table"
-                    if e[0] != '###':
-                        raise
-                finally:
-                    db.close()
-
-                # if overlap is empty suggests there is no overlapping ROI in table
-                if len(overlap) > 0:
-
-                    roi_ID = overlap[0][0]
-
-                    # open connection to database and run SQL insert statement
-                    db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-                    cursor = db.cursor()
-
-                    # sql statement to see if segment overlaps with any entries from ROI table
-                    probes_in_ROI = "select Probeorder_ID from probeorder, roi where roi_ID = %s and probeorder.`Start` < roi.`stop` and probeorder.`Stop` > roi.`Start` and probeorder.ChromosomeNumber=roi.ChromosomeNumber order by Probeorder_ID "
-                    try:
-                        cursor.execute(probes_in_ROI, (roi_ID))
-                        probes = cursor.fetchall()
-                    except MySQLdb.Error, e:
-                        db.rollback()
-                        print "fail - unable to access ROI table"
-                        if e[0] != '###':
-                            raise
-                    finally:
-                        db.close()
-
-                    # go through result of query and append the probes to a list
-                    list_of_probes = []
-                    for i in range(0, len(probes)):
-                        probeID = probes[i][0]
-                        list_of_probes.append(probeID)
-
-                    ############################################################
-                    # get first and last probe
-                    # first_probe = list_of_probes[0]
-                    # last_probe = list_of_probes[-1]
-                    #
-                    # but if there is print the ROI_ID
-                    # print "overlaps with previously reported ROI\t ROI_ID:" + str(overlap[0][0]) + "\trange of probes in ROI = " + str(first_probe) + "-" + str(last_probe) + "\n"
-                    ############################################################
-
-                else:
-                    # print "does not overlap with a previously reported ROI \n"
-                    pass
-
-        # report the count of segments with more than minimum number of consecutive probes
-        # print "number of imbalances >= " + str(self.min_consecutive_probes - 2) + " = " + str(t)
-
+        
     ####################################################################
     # Perform analysis on ROI
     ####################################################################
@@ -770,7 +705,7 @@ class Analyse_array():
 
         # select the arrayID, green and red Z score for all probes within the ROI for this array.
         getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from """ + self.features_table + """ f, roi r, probeorder p where f.ProbeKey = p.ProbeKey and p.ChromosomeNumber = r.Chromosome and p.`stop` > r.start and p.`Start` < r.stop and ROI_ID = """
-        getZscorespart2 = """ and f.array_ID = """
+        getZscorespart2 = """ and probeorder.ignore_if_duplicated != 1 and f.array_ID = """
         combinedquery = getZscorespart1 + str(ROI_ID) + getZscorespart2 + str(array_ID)
 
         # open connection to database and run SQL select statement
@@ -1175,30 +1110,34 @@ if __name__ == "__main__":
     a = get_files_and_probes()
     # create a list of files
     a.get_files()
+    a.get_arrays_in_db()
 
     # and feed them into the read file function.
     n = 1
     for i in a.chosenfiles:
-        b = Analyse_array()
-        print "file " + str(n) + " of " + str(len(a.chosenfiles))
-
-        # insert FE file to db
-        b.get_list_of_target_probes()
-        b.read_file(i)
-        b.insert_feparam()
-        b.insert_stats()
-        b.feed_create_ins_statements()
-        b.insert_features()
-        b.CalculateLogRatios()
-
-        # perform the analysis on consecutive probes
-        b.get_Z_scores_consec()
-        b.loop_through_chroms()
-        b.redefine_shared_region()
-        b.describe_imbalance()
-
-        # perform analysis on defined regions (getROI calls subsequent modules)
-        # b.GetROI()
-
-        b.final_update_stats()
-        n = n + 1
+        if i in a.filenames:
+            print "pass"
+        else:
+            b = Analyse_array()
+            print "file " + str(n) + " of " + str(len(a.chosenfiles))
+    
+            # insert FE file to db
+            b.get_list_of_target_probes()
+            b.read_file(i)
+            b.insert_feparam()
+            b.insert_stats()
+            b.feed_create_ins_statements()
+            b.insert_features()
+            b.CalculateLogRatios()
+    
+            # perform the analysis on consecutive probes
+            b.get_Z_scores_consec()
+            b.loop_through_chroms()
+            b.redefine_shared_region()
+            b.describe_imbalance()
+    
+            # perform analysis on defined regions (getROI calls subsequent modules)
+            # b.GetROI()
+    
+            b.final_update_stats()
+            n = n + 1
