@@ -19,7 +19,7 @@ list_of_probes=[]
 db = MySQLdb.Connect(host=host, port=port, user=username, passwd=passwd, db=database)
 cursor = db.cursor()
 
-# sql statement
+# sql statement may need to change the group by to systematic name????!!!!!!
 duplicate_query = "select probekey from probeorder group by probename having count(*) > 1"
 
 try:
