@@ -4,7 +4,7 @@ Created on 16 Oct 2015
 @author: Aled
 '''
 import MySQLdb
-from datetime import datetime
+# from datetime import datetime
 
 
 class Analyse_array():
@@ -25,8 +25,8 @@ class Analyse_array():
 
         # features table
         self.features_table = 'features_mini'
-        
-        #CPA table
+
+        # CPA table
         self.CPA_table = "consecutive_probes_analysis_copy"
 
         # Z score cutoff
@@ -230,7 +230,7 @@ class Analyse_array():
                 cursor = db.cursor()
 
                 # sql statement to insert to db
-                insert_analysis = "insert into "+self.CPA_table+" (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes,Cutoff) values (%s,%s,%s,%s,%s,%s,%s)"
+                insert_analysis = "insert into " + self.CPA_table + " (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes,Cutoff) values (%s,%s,%s,%s,%s,%s,%s)"
 
                 # sql statement to get the coordinates from the probeorder_IDS
                 get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
@@ -255,11 +255,11 @@ class Analyse_array():
         global stats
         global list_of_probes
         global filein
-        #global shared_imbalance_combined
+        # global shared_imbalance_combined
 
         Zscore_results = {}
         shared_imbalance = []
-        #shared_imbalance_combined = {}
+        # shared_imbalance_combined = {}
         insertstatements = {}
         features = []
         feparam = []
@@ -271,7 +271,7 @@ class Analyse_array():
 # execute the program
 if __name__ == "__main__":
 
-    #list_of_arrays = [17,18,19,20,21,22,23,24,25,26]
+    # list_of_arrays = [17,18,19,20,21,22,23,24,25,26]
     list_of_arrays = [30]
 
     n = 1
