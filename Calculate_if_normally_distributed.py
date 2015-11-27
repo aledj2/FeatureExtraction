@@ -12,10 +12,12 @@ import matplotlib as plt
 import pylab
 
 # features table
-features_table = "paramtest_features"
+#features_table = "paramtest_features"
+features_table = "features_mini"
+#features_table = "features"
 
 # select all probes from a table
-query = "select gProcessedSignal, rProcessedSignal from features_mini"
+query = "select gProcessedSignal, rProcessedSignal from " + features_table #+ " where array_ID = 11"
 
 #lists of signal intensities
 red_probes=[]
@@ -48,12 +50,23 @@ green_mean=np.mean(green_probes)
 red_SD=np.std(red_probes)
 green_SD=np.std(green_probes)
 
+
+#calculate kurtosis
+g_kurtosis, g_pvalue = scipy.normaltest(green_probes)
+r_kurtosis, r_pvalue = scipy.normaltest(red_probes)
+
 #print max(red_probes)
-
-plt.pyplot.hist(red_probes, range=[0,4000])
-plt.pyplot.show()
-
-plt.pyplot.hist(green_probes, range=[0,4000])
+fig=plt.pyplot.figure()
+ax=fig.add_subplot(121)
+ax.hist(red_probes, range=[0,3000],bins=100, histtype='step', color='r')
+ax.set_title("red probe Z score")
+ax.annotate("red kurtosis = "+str(r_kurtosis),xy=(2000,12000), xycoords='data')
+#plt.pyplot.show()
+ax2=fig.add_subplot(122)
+ax2.hist(green_probes, range=[0,3000], bins=100, histtype='step', color='g')
+ax2.set_title("green probe Z score")
+ax2.annotate("green kurtosis = "+str(g_kurtosis),xy=(2000,12000), xycoords='data')
+plt.pyplot.tight_layout()
 plt.pyplot.show()
 ################################################################################
 # # create a variable to hold the result from the select query
