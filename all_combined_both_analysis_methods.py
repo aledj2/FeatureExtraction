@@ -137,8 +137,8 @@ class Analyse_array():
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
 
-        # sql statement for distinct probenames
-        list_of_probes_query = "select distinct probename from probeorder"
+        # sql statement for probename where are to be analysed
+        list_of_probes_query = "select probename from probeorder where Ignore_if_duplicated is null"
 
         try:
             cursor.execute(list_of_probes_query)
@@ -665,7 +665,6 @@ class Analyse_array():
                 finally:
                     db.close()
 
-        
     ####################################################################
     # Perform analysis on ROI
     ####################################################################
