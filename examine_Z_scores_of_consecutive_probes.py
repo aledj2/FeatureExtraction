@@ -1,6 +1,16 @@
 '''
 Created on 15 Oct 2015
 
+This script pulls out all the regions in the CPA table for an array.
+It then gets each each probe within the region and looks in the features table and extracts the raw Z score for each probe
+creates a dictionary with the key as array and CPA_key and values are z scores
+
+probes_that_should_be_called looks at the truepos table to see which probes should be called as abnormal
+
+Any calls which overlap with this region are then marked as truepositives
+All other calls are false positives.
+
+
 @author: Aled
 '''
 import MySQLdb
@@ -21,7 +31,7 @@ class Z_score_analysis:
         self.outputfile = "C:\\Users\\Aled\\Google Drive\\MSc project\\Zscore_analysis\\output.csv"
 
         # tables
-        self.CPA = "consecutive_probes_analysis_copy"
+        self.CPA = "consecutive_probes_analysis"
         self.features = "features_mini"
         self.probeorder = "probeorder"
         self.feparam = "feparam_mini"
@@ -58,7 +68,7 @@ class Z_score_analysis:
         ########################################################################
 
         # read consecutive_probes table
-        sql1 = "select Array_ID,Chromosome,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID = %s and Cutoff = %s "
+        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID = %s and Cutoff = %s "
 
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -143,7 +153,7 @@ class Z_score_analysis:
                 redsigintzscore = redsigintzscore * -1
 
             # create a unique name for abberation concatenating the array and the call key
-            abberation_name = str(array_ID) + "_" + str(int(CPA_key))
+            abberation_name = str(array_ID) + "_" + str(CPA_key)
 
             # check if in dict already
             if abberation_name in self.dict_of_zscores_for_CPA_call:
