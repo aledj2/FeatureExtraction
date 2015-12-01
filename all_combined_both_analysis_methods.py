@@ -97,10 +97,10 @@ class Analyse_array():
         self.features_table = 'features_mini'
 
         # cpa table
-        self.CPA_table = "consecutive_probes_analysis"
+        self.CPA_table = 'consecutive_probes_analysis'
         
         # reference values table
-        self.reference_values = "referencevalues_151201"
+        self.reference_values = 'referencevalues_151201'
 
         # An insert statement which is appended to in the below create_ins_statements function
         self.baseinsertstatement = """INSERT INTO """ + self.features_table + """ (Array_ID,ProbeName,gProcessedSignal,rProcessedSignal) values """
@@ -109,7 +109,7 @@ class Analyse_array():
         self.Zscore_cutoff = 2.374
 
         # number to letter dict
-        self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
+        self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V', 23:'W'}
 
         # minimum number of consecutive probes
         self.min_consecutive_probes = 3
@@ -454,15 +454,15 @@ class Analyse_array():
         cursor = db.cursor()
 
         # statement to update the features table to populate the probekey (numeric keys to speed up subsequent steps)
-        update_features = """update {0} f, probeorder p, {1} r set f.probekey=p.probekey,set f.GreenLogratio=log2(f.gprocessedsignal/r.gsignalint),f.RedlogRatio=log2(f.rprocessedsignal/r.rsignalint), f.greensigintzscore=((f.gProcessedSignal-r.gSignalInt)/r.gSignalIntSD),f.redsigintzscore=((f.rProcessedSignal-r.rSignalInt)/r.rSignalIntSD), referencevaluetable={1} where r.probekey=p.probekey and p.probename=f.probename and f.array_ID={2}""".format(self.features_table,self.reference_values,arrayID)
-
+        update_features ="update {0} f, probeorder p, {1} r set f.probekey=p.probekey,f.GreenLogratio=log2(f.gprocessedsignal/r.gsignalint),f.RedlogRatio=log2(f.rprocessedsignal/r.rsignalint), f.greensigintzscore=((f.gProcessedSignal-r.gSignalInt)/r.gSignalIntSD),f.redsigintzscore=((f.rProcessedSignal-r.rSignalInt)/r.rSignalIntSD), referencevaluetable='{2}' where r.probekey=p.probekey and p.probename=f.probename and f.array_ID={3}".format(self.features_table, self.reference_values,self.reference_values, arrayID)
+        #print update_features
         ## SQL statement which captures or creates the values required
         #UpdateLogRatio = """update """ + self.features_table + """ t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
 
         # statement to populate ins_stats table
         update_ins_stats = """update insert_stats set Zscore_time=%s where array_ID=%s"""
         try:
-            cursor.execute(features)
+            cursor.execute(update_features)
             db.commit()
             #cursor.execute(UpdateLogRatio, (str(arrayID)))
             #db.commit()
@@ -477,7 +477,7 @@ class Analyse_array():
             # pass
 
     ####################################################################
-    # Perform analysis on ROI
+    # Perform analysis on consec probes
     ####################################################################
 
     def get_Z_scores_consec(self):
@@ -490,9 +490,9 @@ class Analyse_array():
         cursor = db.cursor()
 
         # sql statement
-        get_zscores = """select greensigintzscore, redsigintzscore, Probeorder_ID, probeorder.ChromosomeNumber from """ + self.features_table + """ f, probeorder where Array_ID = %s and probeorder.ProbeKey=f.ProbeKey and probeorder.ignore_if_duplicated is NULL order by Probeorder_ID"""
+        get_zscores = """select greensigintzscore, redsigintzscore, p.probeorder, p.ChromosomeNumber from {0} f, probeorder p where Array_ID = {1} and p.ProbeKey=f.ProbeKey and p.ignore_if_duplicated is NULL order by probeorder """.format(self.features_table,arrayID)
         try:
-            cursor.execute(get_zscores, (arrayID))
+            cursor.execute(get_zscores)
             Zscores = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -511,13 +511,13 @@ class Analyse_array():
             for i in Zscores:
                 greensigintzscore = float(i[0])
                 redsigintzscore = float(i[1])
-                Probeorder_ID = int(i[2])
+                probeorder = int(i[2])
                 ChromosomeNumber = int(i[3])
 
                 # select for a particular chromosome
                 if ChromosomeNumber == j:
                     # append to alist
-                    alist.append((greensigintzscore, redsigintzscore, Probeorder_ID, ChromosomeNumber))
+                    alist.append((greensigintzscore, redsigintzscore, probeorder, ChromosomeNumber))
                 else:
                     pass
                 # set alist as the dictionary value, with chrom number as key. NB
@@ -528,7 +528,7 @@ class Analyse_array():
         It looks firstly for deletions then gains
         Each 'tile' of three probes is assessed by looking if the first probe for cy3 is outside the Z score cutoff, then the next probe, then the third probe.
         The Hyb partner (cy5) is then assessed for probe one, then the second and third probes.
-        If all probes are outside the cutoff the chromosome, and probeorder_IDs are added to a list as a tuple
+        If all probes are outside the cutoff the chromosome, and probeorder are added to a list as a tuple
         '''
         global shared_imbalance
         shared_imbalance = []
@@ -653,16 +653,16 @@ class Analyse_array():
                 insert_analysis = "insert into " + self.CPA_table + " (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes,Cutoff) values (%s,%s,%s,%s,%s,%s,%s)"
 
                 # sql statement to get the coordinates from the probeorder_IDS
-                get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
+                #get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
 
                 try:
-                    cursor.execute(get_region, (firstprobe, lastprobe))
-                    region = cursor.fetchall()
+                    #cursor.execute(get_region, (firstprobe, lastprobe))
+                    #region = cursor.fetchall()
                     cursor.execute(insert_analysis, (arrayID, chrom, firstprobe, lastprobe, gain_loss, num_of_probes, self.Zscore_cutoff))
                     db.commit()
                 except MySQLdb.Error, e:
                     db.rollback()
-                    print "fail - unable to access probeorder table"
+                    print "fail - unable to update CPA table"
                     if e[0] != '###':
                         raise
                 finally:
