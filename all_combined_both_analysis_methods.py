@@ -98,6 +98,9 @@ class Analyse_array():
 
         # cpa table
         self.CPA_table = "consecutive_probes_analysis"
+        
+        # reference values table
+        self.reference_values = "referencevalues_151201"
 
         # An insert statement which is appended to in the below create_ins_statements function
         self.baseinsertstatement = """INSERT INTO """ + self.features_table + """ (Array_ID,ProbeName,gProcessedSignal,rProcessedSignal) values """
@@ -451,18 +454,18 @@ class Analyse_array():
         cursor = db.cursor()
 
         # statement to update the features table to populate the probekey (numeric keys to speed up subsequent steps)
-        update_probeKey = """update """ + self.features_table + """ t, probeorder set t.probekey=probeorder.probekey where probeorder.probename=t.probename and t.array_ID=%s"""
+        update_features = """update {0} f, probeorder p, {1} r set f.probekey=p.probekey,set f.GreenLogratio=log2(f.gprocessedsignal/r.gsignalint),f.RedlogRatio=log2(f.rprocessedsignal/r.rsignalint), f.greensigintzscore=((f.gProcessedSignal-r.gSignalInt)/r.gSignalIntSD),f.redsigintzscore=((f.rProcessedSignal-r.rSignalInt)/r.rSignalIntSD), referencevaluetable={1} where r.probekey=p.probekey and p.probename=f.probename and f.array_ID={2}""".format(self.features_table,self.reference_values,arrayID)
 
-        # SQL statement which captures or creates the values required
-        UpdateLogRatio = """update """ + self.features_table + """ t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
+        ## SQL statement which captures or creates the values required
+        #UpdateLogRatio = """update """ + self.features_table + """ t, referencevalues set GreenLogratio=log2(t.gprocessedsignal/referencevalues.gsignalint),RedlogRatio=log2(t.rprocessedsignal/referencevalues.rsignalint),t.rReferenceAverageUsed = referencevalues.rSignalInt,t.gReferenceAverageUsed=referencevalues.gSignalInt, t.rReferenceSD=referencevalues.rSignalIntSD, t.gReferenceSD=referencevalues.gSignalIntSD, t.greensigintzscore=((t.gProcessedSignal-referencevalues.gSignalInt)/referencevalues.gSignalIntSD),t.redsigintzscore=((t.rProcessedSignal-referencevalues.rSignalInt)/referencevalues.rSignalIntSD) where t.Probekey=referencevalues.Probekey and t.array_ID=%s"""
 
         # statement to populate ins_stats table
         update_ins_stats = """update insert_stats set Zscore_time=%s where array_ID=%s"""
         try:
-            cursor.execute(update_probeKey, (str(arrayID)))
+            cursor.execute(features)
             db.commit()
-            cursor.execute(UpdateLogRatio, (str(arrayID)))
-            db.commit()
+            #cursor.execute(UpdateLogRatio, (str(arrayID)))
+            #db.commit()
             cursor.execute(update_ins_stats, (str(datetime.now().strftime('%H:%M:%S')), str(arrayID)))
             db.commit()
         except MySQLdb.Error, e:
