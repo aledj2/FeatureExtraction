@@ -5,7 +5,7 @@ Created on 8 Jun 2015
 '''
 import MySQLdb
 
-arrayID = 35   # CHECK SYMBOL IN SQL QUERY!
+arrayID = 15   # CHECK SYMBOL IN SQL QUERY!
 
 del1 = """DELETE FROM `feparam_mini` WHERE  `Array_ID`= %s"""
 del2 = """DELETE FROM `stats_mini` WHERE  `Array_ID` = %s """

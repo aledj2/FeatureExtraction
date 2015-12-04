@@ -1,6 +1,8 @@
 '''
 Created on 16 Oct 2015
 
+This script loops through the list or
+
 @author: Aled
 '''
 import MySQLdb
@@ -27,10 +29,10 @@ class Analyse_array():
         self.features_table = 'features_mini'
 
         # CPA table
-        self.CPA_table = "consecutive_probes_analysis_copy"
+        self.CPA_table = "consecutive_probes_analysis"
 
         # Z score cutoff
-        self.Zscore_cutoff = 2.374
+        self.Zscore_cutoff = 5
 
         # number to letter dict
         self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
@@ -63,16 +65,16 @@ class Analyse_array():
         arrayID = array_ID
         global Zscore_results
         Zscore_results = {}
-        print "Analysing array: " + str(array_ID)
+        # print "Analysing array: " + str(arrayID)
 
         # open connection to database and run SQL statement to extract the Z scores, the probe orderID and chromosome
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
 
         # sql statement
-        get_zscores = """select greensigintzscore, redsigintzscore, Probeorder_ID, probeorder.ChromosomeNumber from """ + self.features_table + """ f, probeorder where Array_ID = %s and probeorder.ProbeKey=f.ProbeKey and probeorder.ignore_if_duplicated is NULL order by Probeorder_ID"""
+        get_zscores = """select greensigintzscore, redsigintzscore, p.probeorder, p.ChromosomeNumber from {0} f, probeorder p where Array_ID = {1} and p.ProbeKey=f.ProbeKey and p.ignore_if_duplicated is NULL order by probeorder """.format(self.features_table, arrayID)
         try:
-            cursor.execute(get_zscores, (arrayID))
+            cursor.execute(get_zscores)
             Zscores = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -91,13 +93,13 @@ class Analyse_array():
             for i in Zscores:
                 greensigintzscore = float(i[0])
                 redsigintzscore = float(i[1])
-                Probeorder_ID = int(i[2])
+                probeorder = int(i[2])
                 ChromosomeNumber = int(i[3])
 
                 # select for a particular chromosome
                 if ChromosomeNumber == j:
                     # append to alist
-                    alist.append((greensigintzscore, redsigintzscore, Probeorder_ID, ChromosomeNumber))
+                    alist.append((greensigintzscore, redsigintzscore, probeorder, ChromosomeNumber))
                 else:
                     pass
                 # set alist as the dictionary value, with chrom number as key. NB
@@ -108,7 +110,7 @@ class Analyse_array():
         It looks firstly for deletions then gains
         Each 'tile' of three probes is assessed by looking if the first probe for cy3 is outside the Z score cutoff, then the next probe, then the third probe.
         The Hyb partner (cy5) is then assessed for probe one, then the second and third probes.
-        If all probes are outside the cutoff the chromosome, and probeorder_IDs are added to a list as a tuple
+        If all probes are outside the cutoff the chromosome, and probeorder are added to a list as a tuple
         '''
         global shared_imbalance
         shared_imbalance = []
@@ -121,6 +123,11 @@ class Analyse_array():
             no_probes_on_chrom = len(Zscore_results[i])
             # loop through each probe in order (except the last two as there won't be 2 probes after these)
             for j in range(no_probes_on_chrom - 2):
+                ################################################################
+                # if Zscore_results[i][j][2] in (10855,10856,10857):
+                #     print Zscore_results[i][j]
+                ################################################################
+                
                 # check is probe one cy3 is below the negative cutoff
                 if Zscore_results[i][j][0] < -self.Zscore_cutoff:
                     # then check probe 2
@@ -147,43 +154,43 @@ class Analyse_array():
 
     def redefine_shared_region(self):
         ''' this module goes through the shared imbalance list one chromosome at a time and merges any overlapping 'tiles' into larger regions of shared imbalances '''
-
+ 
         # for each chromosome assign chromosome number and chromosome letter to variables
         for j in range(1, 23):
             chromosome = j
             chrom_letter = self.num2letter[j]
-
+ 
             # get number of imbalances (on all chromosomes)
             number_of_shared_imbalances = len(shared_imbalance)
-
+ 
             # x is a counter for the number of non-overlapping segments on the chromosome
             x = 0
-
+ 
             # loop through the list shared_imbalance
             for i in range(0, number_of_shared_imbalances):
-
+ 
                 # if the segment is on this chromosome
                 if shared_imbalance[i][0] == chromosome:
-
+ 
                     # check if there is already a segment on this chromosome in the dictionary
                     if chrom_letter not in shared_imbalance_combined.keys():
-
+ 
                         # if there is not add it
                         shared_imbalance_combined[chrom_letter] = shared_imbalance[i]
-
+ 
                         # increase x to account for added segment
                         x = x + 1
-
+ 
                     # if there is not
                     else:
                         # n is a counter for if a segment has been merged
                         n = 0
-
+ 
                         # for the number of segments on this chromosome (x)
                         for c in range(1, x + 1):
                             # each dict_key is the chromosome letter repeated eg 1st segment on chr1 = A, 2nd = AA, 3rd = AAA...
                             dict_key = chrom_letter * c
-
+ 
                             # if the first probe of new segment is = to the 2nd probe of previous segment AND same copy number state combine them
                             if shared_imbalance[i][-3] == shared_imbalance_combined[dict_key][-2] and shared_imbalance[i][1] == shared_imbalance_combined[dict_key][1]:
                                 # change n=1 to mark that the segment has been merged
@@ -192,7 +199,7 @@ class Analyse_array():
                                 shared_imbalance_combined[dict_key] += (shared_imbalance[i][-1],)
                             else:
                                 pass
-
+ 
                         # If n==0 the segment hasn't been merged and must not overlapping any existing segments
                         if n == 0:
                             # increase x to increase count of segments for this chrom
@@ -201,53 +208,53 @@ class Analyse_array():
                             dict_key2 = chrom_letter * x
                             # add new dict_key/value to dictionary
                             shared_imbalance_combined[dict_key2] = shared_imbalance[i]
-
+ 
     def describe_imbalance(self):
         ''' this function populates the CPA table'''
-
+ 
         # counter for number of segments with more than x probes
         t = 0
-
+ 
         # for each chromosome in dict
         for i in shared_imbalance_combined:
-
+ 
             # shared_imbalance_combined[i] is at least (chrom, -1/1 (loss/gain),probe 1 probeorder_ID,probe 2 probeorder_ID,probe 3 probeorder_ID)
             # minimum no of probes in abberation using min no of probes (set in __init__) plus 2 to take into account chrom and +1/-1 in list
             if len(shared_imbalance_combined[i]) >= self.min_consecutive_probes + 2:
-
+ 
                 # add counter
                 t = t + 1
-
+ 
                 # define the chromosome, first and last probe, gain/loss and number of probes
                 chrom = shared_imbalance_combined[i][0]
                 firstprobe = shared_imbalance_combined[i][2]
                 lastprobe = shared_imbalance_combined[i][-1]
                 gain_loss = shared_imbalance_combined[i][1]
                 num_of_probes = len(shared_imbalance_combined[i]) - 2
-
+ 
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
                 cursor = db.cursor()
-
+ 
                 # sql statement to insert to db
                 insert_analysis = "insert into " + self.CPA_table + " (Array_ID, Chromosome, first_probe,last_probe,Gain_loss,No_Probes,Cutoff) values (%s,%s,%s,%s,%s,%s,%s)"
-
+ 
                 # sql statement to get the coordinates from the probeorder_IDS
-                get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
-
+                # get_region = "select `Start` from probeorder where Probeorder_ID=%s union select `Stop` from probeorder where Probeorder_ID=%s"
+ 
                 try:
-                    cursor.execute(get_region, (firstprobe, lastprobe))
-                    region = cursor.fetchall()
+                    # cursor.execute(get_region, (firstprobe, lastprobe))
+                    # region = cursor.fetchall()
                     cursor.execute(insert_analysis, (arrayID, chrom, firstprobe, lastprobe, gain_loss, num_of_probes, self.Zscore_cutoff))
                     db.commit()
                 except MySQLdb.Error, e:
                     db.rollback()
-                    print "fail - unable to access probeorder table"
+                    print "fail - unable to update CPA table"
                     if e[0] != '###':
                         raise
                 finally:
                     db.close()
-
+ 
         global Zscore_results
         global insertstatements
         global features
@@ -256,7 +263,7 @@ class Analyse_array():
         global list_of_probes
         global filein
         # global shared_imbalance_combined
-
+ 
         Zscore_results = {}
         shared_imbalance = []
         # shared_imbalance_combined = {}
@@ -271,8 +278,8 @@ class Analyse_array():
 # execute the program
 if __name__ == "__main__":
 
-    # list_of_arrays = [17,18,19,20,21,22,23,24,25,26]
-    list_of_arrays = [30]
+    list_of_arrays = range(6,17)
+    # list_of_arrays = [30]
 
     n = 1
     for i in range(list_of_arrays[0], list_of_arrays[-1] + 1):

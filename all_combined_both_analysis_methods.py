@@ -667,403 +667,405 @@ class Analyse_array():
                         raise
                 finally:
                     db.close()
-
-    ####################################################################
-    # Perform analysis on ROI
-    ####################################################################
-
-    def GetROI(self):
-        '''This function creates a list of all the analysis tables which are to be updated.
-        For each table the get Z scores function is called.
-        Once all the tables have been updated the function which compares the hyb partners is called.
-        '''
-        # open connection to database and run SQL select statement
-        db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-        cursor = db.cursor()
-
-        # sql statement
-        GetROI = """select distinct Analysis_table,ROI_ID from roi where `analyse` = 2"""
-
-        try:
-            cursor.execute(GetROI)
-            ROIqueryresult = cursor.fetchall()
-        except MySQLdb.Error, e:
-            db.rollback()
-            print "unable to retrieve the analysis tables to populate"
-            if e[0] != '###':
-                raise
-        finally:
-            db.close()
-
-        # should return a list of ((analysistable,ROI_ID),(...))
-        # so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
-
-        # for each ROI call get_Z_Scores function
-        for i in range(len(ROIqueryresult)):
-            Analyse_array().get_Z_scores_ROI(ROIqueryresult[i][0], ROIqueryresult[i][1], arrayID)
-
-    def get_Z_scores_ROI(self, analysistable, ROI_ID, array_ID):
-        '''This function finds all the Z scores for any probes within this roi for this array and passes into the function which analyses the results'''
-
-        # select the arrayID, green and red Z score for all probes within the ROI for this array.
-        getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from """ + self.features_table + """ f, roi r, probeorder p where f.ProbeKey = p.ProbeKey and p.ChromosomeNumber = r.Chromosome and p.`stop` > r.start and p.`Start` < r.stop and ROI_ID = """
-        getZscorespart2 = """ and probeorder.ignore_if_duplicated != 1 and f.array_ID = """
-        combinedquery = getZscorespart1 + str(ROI_ID) + getZscorespart2 + str(array_ID)
-
-        # open connection to database and run SQL select statement
-        db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-        cursor = db.cursor()
-
-        # execute query and assign the results to Zscorequeryresult
-        try:
-            cursor.execute(combinedquery)
-            Zscorequeryresult = cursor.fetchall()
-        except MySQLdb.Error, e:
-            db.rollback()
-            print "fail - unable to retrieve z scores"
-            if e[0] != '###':
-                raise
-        finally:
-            db.close()
-
-        # this creates a tuple for ((arrayID,greenZscore,RedZscore),(arrayID,greenZscore,RedZscore),...)
-
-        # create a list for red and green Z scores
-        listofgreenZscores = []
-        listofredZscores = []
-
-        # loop through the query result adding the red and green z scores to table
-        for i in range(len(Zscorequeryresult)):
-            listofgreenZscores.append(Zscorequeryresult[i][1])
-            listofredZscores.append(Zscorequeryresult[i][2])
-
-        # call analyse probe z scores
-        Analyse_array().analyse_probe_Z_scores(array_ID, listofgreenZscores, listofredZscores, analysistable, ROI_ID)
-
-    def analyse_probe_Z_scores(self, arrayID, greenZscores, redZscores, analysistable, ROI_ID):
-        '''this function recieves an array of z scores for red and green for a single roi.
-        The number of probes classed as abnormal are counted and passed to XX which inserts this into the analysis table'''
-
-        # enter the z score for 90 and 95%
-        cutoff90 = 1.645
-        cutoff95 = 1.95
-
-        # number of probes found in ROI
-        no_of_probes_2_analyse = len(greenZscores)
-
-        # create variables to count the probes outside 90 or 95% of normal range
-        reddel90 = 0
-        reddel95 = 0
-        greendel90 = 0
-        greendel95 = 0
-        reddup90 = 0
-        reddup95 = 0
-        greendup90 = 0
-        greendup95 = 0
-
-        # create counts for segment
-        reddelabn = 0
-        reddupabn = 0
-        greendelabn = 0
-        greendupabn = 0
-        reddelabn2 = 0
-        reddupabn2 = 0
-        greendelabn2 = 0
-        greendupabn2 = 0
-
-        # select which cut off to be applied in below (from above)
-        cutoff = cutoff90
-        cutoff2 = cutoff95
-
-        # for each probe within the list count if it falls into an abnormal category
-        for i in range(no_of_probes_2_analyse):
-            # assess the redZscore
-            redZscore = float(redZscores[i])
-            if redZscore > cutoff95:
-                reddup95 = reddup95 + 1
-            elif redZscore < -cutoff95:
-                reddel95 = reddel95 + 1
-            elif redZscore > cutoff90:
-                reddup90 = reddup90 + 1
-            elif redZscore < -cutoff90:
-                reddel90 = reddel90 + 1
-            else:
-                pass
-
-            # assess the greenZscore
-            greenZscore = float(greenZscores[i])
-            if greenZscore > cutoff95:
-                greendup95 = greendup95 + 1
-            elif greenZscore < -cutoff95:
-                greendel95 = greendel95 + 1
-            elif greenZscore > cutoff90:
-                greendup90 = greendup90 + 1
-            elif greenZscore < -cutoff90:
-                greendel90 = greendel90 + 1
-            else:
-                pass
-
-        # ==== Calculate reward for consecutive probes ===#
-        # loop through redzscore list. convert i (Z score) to float
-        for i, item in enumerate(redZscores):
-            item = float(item)
-            # for first probe in segment need to assign previous item to 0 to avoid an error
-            if i == 0:
-                previtem = 0
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff:
-                    reddupabn = reddupabn + 2
-                elif item < -cutoff and previtem < -cutoff:
-                    reddelabn = reddelabn + 2
-                    # If probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff and previtem < cutoff:
-                    reddupabn = reddupabn + 1
-                elif item < -cutoff and previtem > -cutoff:
-                    reddelabn
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
-                    pass
-                else:
-                    pass
-            else:
-                previtem = float(redZscores[i - 1])
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff:
-                    reddupabn = reddupabn + 2
-                elif item < -cutoff and previtem < -cutoff:
-                    reddelabn = reddelabn + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff and previtem < cutoff:
-                    reddupabn = reddupabn + 1
-                elif item < -cutoff and previtem > -cutoff:
-                    reddelabn = reddelabn + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
-                    pass
-                else:
-                    pass
-
-        # loop through greenzscore list. convert i (Z score) to float
-        for i, item in enumerate(greenZscores):
-            item = float(item)
-            if i == 0:
-                previtem = 0
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff:
-                    greendupabn = greendupabn + 2
-                elif item < -cutoff and previtem < -cutoff:
-                    greendelabn = greendelabn + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff and previtem < cutoff:
-                    greendupabn = greendupabn + 1
-                elif item < -cutoff and previtem > -cutoff:
-                    greendelabn = greendelabn + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
-                    pass
-                else:
-                    pass
-            else:
-                previtem = float(greenZscores[i - 1])
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff and previtem > cutoff:
-                    greendupabn = greendupabn + 2
-                elif item < -cutoff and previtem < -cutoff:
-                    greendelabn = greendelabn + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff and previtem < cutoff:
-                    greendupabn = greendupabn + 1
-                elif item < -cutoff and previtem > -cutoff:
-                    greendelabn = greendelabn + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
-                    pass
-                #  probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
-                    pass
-                else:
-                    pass
-                # print "redabn= " + str(redabn)
-
-        # === repeat for Cutoff2 (95%) ===#
-
-        # loop through redzscore list. convert i (Z score) to float
-        for i, item in enumerate(redZscores):
-            item = float(item)
-            # for first probe in segment need to assign previous item to 0 to avoid an error
-            if i == 0:
-                previtem = 0
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2:
-                    reddupabn2 = reddupabn2 + 2
-                elif item < -cutoff2 and previtem < -cutoff2:
-                    reddelabn2 = reddelabn2 + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 and previtem < cutoff2:
-                    reddupabn2 = reddupabn2 + 1
-                elif item < -cutoff2 and previtem > -cutoff2:
-                    reddelabn2 = reddelabn2 + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    pass
-                else:
-                    pass
-            else:
-                previtem = float(redZscores[i - 1])
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2:
-                    reddupabn2 = reddupabn2 + 2
-                elif item < -cutoff2 and previtem < -cutoff2:
-                    reddelabn2 = reddelabn2 + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 and previtem < cutoff2:
-                    reddupabn2 = reddupabn2 + 1
-                elif item < -cutoff2 and previtem > -cutoff2:
-                    reddelabn2 = reddelabn2 + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    pass
-                else:
-                    pass
-
-        # loop through redzscore list. convert i (Z score) to float
-        for i, item in enumerate(greenZscores):
-            item = float(item)
-
-            if i == 0:
-                previtem = 0
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2:
-                    greendupabn2 = greendupabn2 + 2
-                elif item < -cutoff2 and previtem < -cutoff2:
-                    greendelabn2 = greendelabn2 + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 and previtem < cutoff2:
-                    greendupabn2 = greendupabn2 + 1
-                elif item < -cutoff2 and previtem > -cutoff2:
-                    greendelabn2 = greendelabn2 + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    pass
-                else:
-                    pass
-            else:
-                previtem = float(redZscores[i - 1])
-                # if i is abnormal and the previous probe is also abnormal give a score of 2
-                if item > cutoff2 and previtem > cutoff2:
-                    greendupabn2 = greendupabn2 + 2
-                elif item < -cutoff2 and previtem < -cutoff2:
-                    greendelabn2 = greendelabn2 + 2
-                    # if probe is abnormal but previous probe was normal give a score of 1
-                elif item > cutoff2 and previtem < cutoff2:
-                    greendupabn2 = greendupabn2 + 1
-                elif item < -cutoff2 and previtem > -cutoff2:
-                    greendelabn2 = greendelabn2 + 1
-                    # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
-                    pass
-                # if probe is normal and previous probe is also normal give a score of 0(pass)
-                elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
-                    pass
-                else:
-                    pass
-
-        # create variables which can be passed to the next function to save another query.
-        g_del_90 = greendel90 + greendel95
-        r_del_90 = reddel90 + reddel95
-        g_dup_90 = greendup90 + greendup95
-        r_dup_90 = reddup95 + reddup90
-
-        # SQL statement to insert of analysis table
-        UpdateAnalysisTable1 = """insert into """
-        UpdateAnalysisTable2 = """ set Array_ID=%s,ROI_ID=%s,Num_of_probes=%s,Green_del_probes_90=%s,Green_del_probes_95=%s,Red_del_probes_90=%s,Red_del_probes_95=%s,Green_dup_probes_90=%s,Green_dup_probes_95=%s,Red_dup_probes_90=%s,Red_dup_probes_95=%s,GreenDelRegionScore90=%s,GreenDelRegionScore95=%s,GreenDupRegionScore90=%s,GreenDupRegionScore95=%s,RedDelRegionScore90=%s,RedDelRegionScore95=%s,RedDupRegionScore90=%s,RedDupRegionScore95=%s"""
-
-        # UpdateAnalysisTable = """update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
-        combined_query = UpdateAnalysisTable1 + analysistable + UpdateAnalysisTable2
-
-        # open connection to database and run SQL update/ins statement
-        db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-        cursor = db.cursor()
-        try:
-            # use first for update query. second for insert
-            # cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
-            cursor.execute(combined_query, (str(arrayID), str(ROI_ID), str(no_of_probes_2_analyse), str(greendel90 + greendel95), str(greendel95), str(reddel90 + reddel95), str(reddel95), str(greendup90 + greendup95), str(greendup95), str(reddup95 + reddup90), str(reddup95), str(greendelabn), str(greendelabn2), str(greendupabn), str(greendupabn2), str(reddelabn), str(reddelabn2), str(reddupabn), str(reddupabn2)))
-            db.commit()
-            # print "inserted into analysis table: " + str(analysistable)
-        except MySQLdb.Error, e:
-            db.rollback()
-            if e[0] != '###':
-                raise
-        finally:
-            db.close()
-
-        # call compare hyb partner function
-        Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID, g_del_90, g_dup_90, r_del_90, r_dup_90, no_of_probes_2_analyse)
-
-    def CompareHybPartners(self, table, arrayID, ROI_ID, g_del_90, g_dup_90, r_del_90, r_dup_90, no_of_probes_2_analyse):
-        '''this module takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour'''
-
-        # create connection
-        db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
-        cursor = db.cursor()
-
-        # insert statement
-        ins_to_shared_imb = """insert Shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup) values (%s,%s,%s,%s,%s,%s)"""
-
-        percentage_of_probes = 0.5
-        minimum_no_of_probes = 5
-
-        # Normal=True
-        # if both red and green have more than half the probes abnormally low for the region say so
-        if g_del_90 > (percentage_of_probes * no_of_probes_2_analyse) and r_del_90 > (percentage_of_probes * no_of_probes_2_analyse) and no_of_probes_2_analyse > minimum_no_of_probes:
-            try:
-                cursor.execute(ins_to_shared_imb, (str(arrayID), str(ROI_ID), str(r_del_90), str(g_del_90), str(no_of_probes_2_analyse), str(-1)))
-                db.commit()
-                # print "imbalance inserted to Shared_Imbalance"
-            except MySQLdb.Error, e:
-                db.rollback()
-                print "fail - unable to update shared_imbalances table"
-                if e[0] != '###':
-                    raise
-            finally:
-                db.close()
-
-        else:
-            pass
-
-        # if both red and green have more than half the probes abnormally high for the region say so
-        if g_dup_90 > (percentage_of_probes * no_of_probes_2_analyse) and r_dup_90 > (percentage_of_probes * no_of_probes_2_analyse) and no_of_probes_2_analyse > minimum_no_of_probes:
-            try:
-                cursor.execute(ins_to_shared_imb, (str(arrayID), str(ROI_ID), str(r_dup_90), str(g_dup_90), str(no_of_probes_2_analyse), str(1)))
-                db.commit()
-                # print "imbalance inserted to Shared_Imbalance"
-            except MySQLdb.Error, e:
-                db.rollback()
-                print "fail - unable to update shared_imbalances table"
-                if e[0] != '###':
-                    raise
-            finally:
-                db.close()
-        else:
-            pass
+################################################################################
+# 
+#     ####################################################################
+#     # Perform analysis on ROI
+#     ####################################################################
+# 
+#     def GetROI(self):
+#         '''This function creates a list of all the analysis tables which are to be updated.
+#         For each table the get Z scores function is called.
+#         Once all the tables have been updated the function which compares the hyb partners is called.
+#         '''
+#         # open connection to database and run SQL select statement
+#         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
+#         cursor = db.cursor()
+# 
+#         # sql statement
+#         GetROI = """select distinct Analysis_table,ROI_ID from roi where `analyse` = 2"""
+# 
+#         try:
+#             cursor.execute(GetROI)
+#             ROIqueryresult = cursor.fetchall()
+#         except MySQLdb.Error, e:
+#             db.rollback()
+#             print "unable to retrieve the analysis tables to populate"
+#             if e[0] != '###':
+#                 raise
+#         finally:
+#             db.close()
+# 
+#         # should return a list of ((analysistable,ROI_ID),(...))
+#         # so queryresult[i][0] is all of the analysis tables, [i][1] is ROI_ID etc.
+# 
+#         # for each ROI call get_Z_Scores function
+#         for i in range(len(ROIqueryresult)):
+#             Analyse_array().get_Z_scores_ROI(ROIqueryresult[i][0], ROIqueryresult[i][1], arrayID)
+# 
+#     def get_Z_scores_ROI(self, analysistable, ROI_ID, array_ID):
+#         '''This function finds all the Z scores for any probes within this roi for this array and passes into the function which analyses the results'''
+# 
+#         # select the arrayID, green and red Z score for all probes within the ROI for this array.
+#         getZscorespart1 = """select f.array_ID, f.greensigintzscore, f.redsigintzscore from """ + self.features_table + """ f, roi r, probeorder p where f.ProbeKey = p.ProbeKey and p.ChromosomeNumber = r.Chromosome and p.`stop` > r.start and p.`Start` < r.stop and ROI_ID = """
+#         getZscorespart2 = """ and probeorder.ignore_if_duplicated != 1 and f.array_ID = """
+#         combinedquery = getZscorespart1 + str(ROI_ID) + getZscorespart2 + str(array_ID)
+# 
+#         # open connection to database and run SQL select statement
+#         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
+#         cursor = db.cursor()
+# 
+#         # execute query and assign the results to Zscorequeryresult
+#         try:
+#             cursor.execute(combinedquery)
+#             Zscorequeryresult = cursor.fetchall()
+#         except MySQLdb.Error, e:
+#             db.rollback()
+#             print "fail - unable to retrieve z scores"
+#             if e[0] != '###':
+#                 raise
+#         finally:
+#             db.close()
+# 
+#         # this creates a tuple for ((arrayID,greenZscore,RedZscore),(arrayID,greenZscore,RedZscore),...)
+# 
+#         # create a list for red and green Z scores
+#         listofgreenZscores = []
+#         listofredZscores = []
+# 
+#         # loop through the query result adding the red and green z scores to table
+#         for i in range(len(Zscorequeryresult)):
+#             listofgreenZscores.append(Zscorequeryresult[i][1])
+#             listofredZscores.append(Zscorequeryresult[i][2])
+# 
+#         # call analyse probe z scores
+#         Analyse_array().analyse_probe_Z_scores(array_ID, listofgreenZscores, listofredZscores, analysistable, ROI_ID)
+# 
+#     def analyse_probe_Z_scores(self, arrayID, greenZscores, redZscores, analysistable, ROI_ID):
+#         '''this function recieves an array of z scores for red and green for a single roi.
+#         The number of probes classed as abnormal are counted and passed to XX which inserts this into the analysis table'''
+# 
+#         # enter the z score for 90 and 95%
+#         cutoff90 = 1.645
+#         cutoff95 = 1.95
+# 
+#         # number of probes found in ROI
+#         no_of_probes_2_analyse = len(greenZscores)
+# 
+#         # create variables to count the probes outside 90 or 95% of normal range
+#         reddel90 = 0
+#         reddel95 = 0
+#         greendel90 = 0
+#         greendel95 = 0
+#         reddup90 = 0
+#         reddup95 = 0
+#         greendup90 = 0
+#         greendup95 = 0
+# 
+#         # create counts for segment
+#         reddelabn = 0
+#         reddupabn = 0
+#         greendelabn = 0
+#         greendupabn = 0
+#         reddelabn2 = 0
+#         reddupabn2 = 0
+#         greendelabn2 = 0
+#         greendupabn2 = 0
+# 
+#         # select which cut off to be applied in below (from above)
+#         cutoff = cutoff90
+#         cutoff2 = cutoff95
+# 
+#         # for each probe within the list count if it falls into an abnormal category
+#         for i in range(no_of_probes_2_analyse):
+#             # assess the redZscore
+#             redZscore = float(redZscores[i])
+#             if redZscore > cutoff95:
+#                 reddup95 = reddup95 + 1
+#             elif redZscore < -cutoff95:
+#                 reddel95 = reddel95 + 1
+#             elif redZscore > cutoff90:
+#                 reddup90 = reddup90 + 1
+#             elif redZscore < -cutoff90:
+#                 reddel90 = reddel90 + 1
+#             else:
+#                 pass
+# 
+#             # assess the greenZscore
+#             greenZscore = float(greenZscores[i])
+#             if greenZscore > cutoff95:
+#                 greendup95 = greendup95 + 1
+#             elif greenZscore < -cutoff95:
+#                 greendel95 = greendel95 + 1
+#             elif greenZscore > cutoff90:
+#                 greendup90 = greendup90 + 1
+#             elif greenZscore < -cutoff90:
+#                 greendel90 = greendel90 + 1
+#             else:
+#                 pass
+# 
+#         # ==== Calculate reward for consecutive probes ===#
+#         # loop through redzscore list. convert i (Z score) to float
+#         for i, item in enumerate(redZscores):
+#             item = float(item)
+#             # for first probe in segment need to assign previous item to 0 to avoid an error
+#             if i == 0:
+#                 previtem = 0
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff and previtem > cutoff:
+#                     reddupabn = reddupabn + 2
+#                 elif item < -cutoff and previtem < -cutoff:
+#                     reddelabn = reddelabn + 2
+#                     # If probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff and previtem < cutoff:
+#                     reddupabn = reddupabn + 1
+#                 elif item < -cutoff and previtem > -cutoff:
+#                     reddelabn
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
+#                     pass
+#                 else:
+#                     pass
+#             else:
+#                 previtem = float(redZscores[i - 1])
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff and previtem > cutoff:
+#                     reddupabn = reddupabn + 2
+#                 elif item < -cutoff and previtem < -cutoff:
+#                     reddelabn = reddelabn + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff and previtem < cutoff:
+#                     reddupabn = reddupabn + 1
+#                 elif item < -cutoff and previtem > -cutoff:
+#                     reddelabn = reddelabn + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
+#                     pass
+#                 else:
+#                     pass
+# 
+#         # loop through greenzscore list. convert i (Z score) to float
+#         for i, item in enumerate(greenZscores):
+#             item = float(item)
+#             if i == 0:
+#                 previtem = 0
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff and previtem > cutoff:
+#                     greendupabn = greendupabn + 2
+#                 elif item < -cutoff and previtem < -cutoff:
+#                     greendelabn = greendelabn + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff and previtem < cutoff:
+#                     greendupabn = greendupabn + 1
+#                 elif item < -cutoff and previtem > -cutoff:
+#                     greendelabn = greendelabn + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
+#                     pass
+#                 else:
+#                     pass
+#             else:
+#                 previtem = float(greenZscores[i - 1])
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff and previtem > cutoff:
+#                     greendupabn = greendupabn + 2
+#                 elif item < -cutoff and previtem < -cutoff:
+#                     greendelabn = greendelabn + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff and previtem < cutoff:
+#                     greendupabn = greendupabn + 1
+#                 elif item < -cutoff and previtem > -cutoff:
+#                     greendelabn = greendelabn + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff and item > -cutoff and previtem > cutoff or item < cutoff and item > -cutoff and previtem < -cutoff:
+#                     pass
+#                 #  probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff and item > -cutoff and previtem < cutoff and previtem > -cutoff:
+#                     pass
+#                 else:
+#                     pass
+#                 # print "redabn= " + str(redabn)
+# 
+#         # === repeat for Cutoff2 (95%) ===#
+# 
+#         # loop through redzscore list. convert i (Z score) to float
+#         for i, item in enumerate(redZscores):
+#             item = float(item)
+#             # for first probe in segment need to assign previous item to 0 to avoid an error
+#             if i == 0:
+#                 previtem = 0
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff2 and previtem > cutoff2:
+#                     reddupabn2 = reddupabn2 + 2
+#                 elif item < -cutoff2 and previtem < -cutoff2:
+#                     reddelabn2 = reddelabn2 + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff2 and previtem < cutoff2:
+#                     reddupabn2 = reddupabn2 + 1
+#                 elif item < -cutoff2 and previtem > -cutoff2:
+#                     reddelabn2 = reddelabn2 + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
+#                     pass
+#                 else:
+#                     pass
+#             else:
+#                 previtem = float(redZscores[i - 1])
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff2 and previtem > cutoff2:
+#                     reddupabn2 = reddupabn2 + 2
+#                 elif item < -cutoff2 and previtem < -cutoff2:
+#                     reddelabn2 = reddelabn2 + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff2 and previtem < cutoff2:
+#                     reddupabn2 = reddupabn2 + 1
+#                 elif item < -cutoff2 and previtem > -cutoff2:
+#                     reddelabn2 = reddelabn2 + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
+#                     pass
+#                 else:
+#                     pass
+# 
+#         # loop through redzscore list. convert i (Z score) to float
+#         for i, item in enumerate(greenZscores):
+#             item = float(item)
+# 
+#             if i == 0:
+#                 previtem = 0
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff2 and previtem > cutoff2:
+#                     greendupabn2 = greendupabn2 + 2
+#                 elif item < -cutoff2 and previtem < -cutoff2:
+#                     greendelabn2 = greendelabn2 + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff2 and previtem < cutoff2:
+#                     greendupabn2 = greendupabn2 + 1
+#                 elif item < -cutoff2 and previtem > -cutoff2:
+#                     greendelabn2 = greendelabn2 + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
+#                     pass
+#                 else:
+#                     pass
+#             else:
+#                 previtem = float(redZscores[i - 1])
+#                 # if i is abnormal and the previous probe is also abnormal give a score of 2
+#                 if item > cutoff2 and previtem > cutoff2:
+#                     greendupabn2 = greendupabn2 + 2
+#                 elif item < -cutoff2 and previtem < -cutoff2:
+#                     greendelabn2 = greendelabn2 + 2
+#                     # if probe is abnormal but previous probe was normal give a score of 1
+#                 elif item > cutoff2 and previtem < cutoff2:
+#                     greendupabn2 = greendupabn2 + 1
+#                 elif item < -cutoff2 and previtem > -cutoff2:
+#                     greendelabn2 = greendelabn2 + 1
+#                     # if probe is normal and the previous probe was abnormal give a score of 0 (pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem > cutoff2 or item < cutoff2 and item > -cutoff2 and previtem < -cutoff2:
+#                     pass
+#                 # if probe is normal and previous probe is also normal give a score of 0(pass)
+#                 elif item < cutoff2 and item > -cutoff2 and previtem < cutoff2 and previtem > -cutoff2:
+#                     pass
+#                 else:
+#                     pass
+# 
+#         # create variables which can be passed to the next function to save another query.
+#         g_del_90 = greendel90 + greendel95
+#         r_del_90 = reddel90 + reddel95
+#         g_dup_90 = greendup90 + greendup95
+#         r_dup_90 = reddup95 + reddup90
+# 
+#         # SQL statement to insert of analysis table
+#         UpdateAnalysisTable1 = """insert into """
+#         UpdateAnalysisTable2 = """ set Array_ID=%s,ROI_ID=%s,Num_of_probes=%s,Green_del_probes_90=%s,Green_del_probes_95=%s,Red_del_probes_90=%s,Red_del_probes_95=%s,Green_dup_probes_90=%s,Green_dup_probes_95=%s,Red_dup_probes_90=%s,Red_dup_probes_95=%s,GreenDelRegionScore90=%s,GreenDelRegionScore95=%s,GreenDupRegionScore90=%s,GreenDupRegionScore95=%s,RedDelRegionScore90=%s,RedDelRegionScore95=%s,RedDupRegionScore90=%s,RedDupRegionScore95=%s"""
+# 
+#         # UpdateAnalysisTable = """update williams_analysis set redregionscore95=%s,greenregionscore95=%s,redregionscore90=%s,greenregionscore90=%s,Num_of_probes=%s,arrayID=%s,GREEN_probes_outside_90=%s,GREEN_probes_outside_95=%s,RED_probes_outside_90=%s,RED_probes_outside_95=%s where arrayID=%s"""
+#         combined_query = UpdateAnalysisTable1 + analysistable + UpdateAnalysisTable2
+# 
+#         # open connection to database and run SQL update/ins statement
+#         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
+#         cursor = db.cursor()
+#         try:
+#             # use first for update query. second for insert
+#             # cursor.execute(UpdateAnalysisTable,(str(redabn2),str(greenabn2),str(redabn),str(greenabn),str(no_of_probes),str(arrayID2test),str(green90+green95),str(green95),str(red90+red95),str(red95),str(arrayID2test))) # use for update
+#             cursor.execute(combined_query, (str(arrayID), str(ROI_ID), str(no_of_probes_2_analyse), str(greendel90 + greendel95), str(greendel95), str(reddel90 + reddel95), str(reddel95), str(greendup90 + greendup95), str(greendup95), str(reddup95 + reddup90), str(reddup95), str(greendelabn), str(greendelabn2), str(greendupabn), str(greendupabn2), str(reddelabn), str(reddelabn2), str(reddupabn), str(reddupabn2)))
+#             db.commit()
+#             # print "inserted into analysis table: " + str(analysistable)
+#         except MySQLdb.Error, e:
+#             db.rollback()
+#             if e[0] != '###':
+#                 raise
+#         finally:
+#             db.close()
+# 
+#         # call compare hyb partner function
+#         Analyse_array().CompareHybPartners(analysistable, arrayID, ROI_ID, g_del_90, g_dup_90, r_del_90, r_dup_90, no_of_probes_2_analyse)
+# 
+#     def CompareHybPartners(self, table, arrayID, ROI_ID, g_del_90, g_dup_90, r_del_90, r_dup_90, no_of_probes_2_analyse):
+#         '''this module takes the counts of abnormnal probes and adds to shared imbalances table if more than half the probes are abnormal in either colour'''
+# 
+#         # create connection
+#         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
+#         cursor = db.cursor()
+# 
+#         # insert statement
+#         ins_to_shared_imb = """insert Shared_imbalances (Array_ID,ROI_ID,No_of_Red_probes,No_of_Green_probes,Probes_in_ROI,Del_Dup) values (%s,%s,%s,%s,%s,%s)"""
+# 
+#         percentage_of_probes = 0.5
+#         minimum_no_of_probes = 5
+# 
+#         # Normal=True
+#         # if both red and green have more than half the probes abnormally low for the region say so
+#         if g_del_90 > (percentage_of_probes * no_of_probes_2_analyse) and r_del_90 > (percentage_of_probes * no_of_probes_2_analyse) and no_of_probes_2_analyse > minimum_no_of_probes:
+#             try:
+#                 cursor.execute(ins_to_shared_imb, (str(arrayID), str(ROI_ID), str(r_del_90), str(g_del_90), str(no_of_probes_2_analyse), str(-1)))
+#                 db.commit()
+#                 # print "imbalance inserted to Shared_Imbalance"
+#             except MySQLdb.Error, e:
+#                 db.rollback()
+#                 print "fail - unable to update shared_imbalances table"
+#                 if e[0] != '###':
+#                     raise
+#             finally:
+#                 db.close()
+# 
+#         else:
+#             pass
+# 
+#         # if both red and green have more than half the probes abnormally high for the region say so
+#         if g_dup_90 > (percentage_of_probes * no_of_probes_2_analyse) and r_dup_90 > (percentage_of_probes * no_of_probes_2_analyse) and no_of_probes_2_analyse > minimum_no_of_probes:
+#             try:
+#                 cursor.execute(ins_to_shared_imb, (str(arrayID), str(ROI_ID), str(r_dup_90), str(g_dup_90), str(no_of_probes_2_analyse), str(1)))
+#                 db.commit()
+#                 # print "imbalance inserted to Shared_Imbalance"
+#             except MySQLdb.Error, e:
+#                 db.rollback()
+#                 print "fail - unable to update shared_imbalances table"
+#                 if e[0] != '###':
+#                     raise
+#             finally:
+#                 db.close()
+#         else:
+#             pass
+################################################################################
 
     def final_update_stats(self):
         # open connection to database and run SQL insert statement
@@ -1071,13 +1073,13 @@ class Analyse_array():
         cursor = db.cursor()
 
         # statements to update the ins_stats table. the first populates the analysis end time and the second changes all the columns into time taken as opposed to time stamps. NB the order of the column updates is important!
-        update_ins_stats2 = """update insert_stats set Analysis_end_time=%s where array_ID=%s"""
-        update_ins_stats3 = """update insert_stats set Analysis_end_time= timediff(Analysis_end_time ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time),TotalTime= addtime(Ins_time,Zscore_time), TotalTime=addtime(totaltime,Analysis_end_time) where array_ID=%s"""
+        #update_ins_stats2 = """update insert_stats set Analysis_end_time=%s where array_ID=%s"""
+        update_ins_stats3 = """update insert_stats set Analysis_end_time= timediff(%s ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time),TotalTime= addtime(Ins_time,Zscore_time), TotalTime=addtime(totaltime,Analysis_end_time) where array_ID=%s"""
 
         try:
             cursor.execute(update_ins_stats2, (str(datetime.now().strftime('%H:%M:%S')), str(arrayID)))
             db.commit()
-            cursor.execute(update_ins_stats3, (str(arrayID)))
+            cursor.execute(update_ins_stats3, (str(datetime.now().strftime('%H:%M:%S')),str(arrayID)))
             db.commit()
         except MySQLdb.Error, e:
             db.rollback()
