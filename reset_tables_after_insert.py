@@ -7,6 +7,7 @@ import MySQLdb
 
 arrayID = 17   # CHECK SYMBOL IN SQL QUERY!
 
+
 del1 = """DELETE FROM `feparam_mini` WHERE  `Array_ID`= %s"""
 del2 = """DELETE FROM `stats_mini` WHERE  `Array_ID` = %s """
 del3 = """DELETE FROM `analysis_all` WHERE  `Array_ID` = %s"""

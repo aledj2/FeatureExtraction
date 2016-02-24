@@ -668,6 +668,7 @@ class Analyse_array():
                         raise
                 finally:
                     db.close()
+
 ################################################################################
 # 
 #     ####################################################################
@@ -1075,12 +1076,15 @@ class Analyse_array():
 
         # statements to update the ins_stats table. the first populates the analysis end time and the second changes all the columns into time taken as opposed to time stamps. NB the order of the column updates is important!
         update_ins_stats2 = """update insert_stats set Analysis_end_time=%s where array_ID=%s"""
+
         update_ins_stats3 = """update insert_stats set Analysis_end_time= timediff(%s ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time),TotalTime= addtime(Ins_time,Zscore_time), TotalTime=addtime(totaltime,Analysis_end_time) where array_ID=%s"""
 
         try:
             cursor.execute(update_ins_stats2, (str(datetime.now().strftime('%H:%M:%S')), str(arrayID)))
             db.commit()
+
             cursor.execute(update_ins_stats3, (str(datetime.now().strftime('%H:%M:%S')), str(arrayID)))
+
             db.commit()
         except MySQLdb.Error, e:
             db.rollback()
