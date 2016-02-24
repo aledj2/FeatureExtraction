@@ -5,7 +5,7 @@ Created on 8 Jun 2015
 '''
 import MySQLdb
 
-arrayID = 15   # CHECK SYMBOL IN SQL QUERY!
+arrayID = 17   # CHECK SYMBOL IN SQL QUERY!
 
 del1 = """DELETE FROM `feparam_mini` WHERE  `Array_ID`= %s"""
 del2 = """DELETE FROM `stats_mini` WHERE  `Array_ID` = %s """
@@ -31,19 +31,19 @@ try:
     # print "indexes dropped"
     ############################################################################
     
-    cursor.execute(del1, (arrayID))
+    cursor.execute(del1, [arrayID])
     db.commit()
     print "feparam emptied"
-    cursor.execute(del2, (arrayID))
+    cursor.execute(del2, [arrayID])
     db.commit()
     print "stats emptied"
-    cursor.execute(del3, (arrayID))
+    cursor.execute(del3, [arrayID])
     db.commit()
     print "analysis_all emptied"
-    cursor.execute(del4, (arrayID))
+    cursor.execute(del4, [arrayID])
     db.commit()
     print "features2 emptied"
-    cursor.execute(del5, (arrayID))
+    cursor.execute(del5, [arrayID])
     db.commit()
     print "insert_stats emptied"
     ############################################################################
@@ -51,7 +51,7 @@ try:
     # db.commit()
     # print "shared imbalances emptied"
     ############################################################################
-    cursor.execute(del7, (arrayID))
+    cursor.execute(del7, [arrayID])
     db.commit()
     print "consecutive_probes_analysis emptied"
 except MySQLdb.Error, e:

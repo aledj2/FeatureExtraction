@@ -32,7 +32,7 @@ class Analyse_array():
         self.CPA_table = "consecutive_probes_analysis"
 
         # Z score cutoff
-        self.Zscore_cutoff = 5
+        self.Zscore_cutoff = 3.55
 
         # number to letter dict
         self.num2letter = {1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L', 13: 'M', 14: 'N', 15: 'O', 16: 'P', 17: 'Q', 18: 'R', 19: 'S', 20: 'T', 21: 'U', 22: 'V'}
@@ -278,13 +278,14 @@ class Analyse_array():
 # execute the program
 if __name__ == "__main__":
 
-    list_of_arrays = range(6,17)
-    # list_of_arrays = [30]
+    #list_of_arrays = range(6,17)
+    list_of_arrays1 = range(18,34)
+    list_of_arrays2 = range(35,92)
 
     n = 1
-    for i in range(list_of_arrays[0], list_of_arrays[-1] + 1):
+    for i in list_of_arrays1+list_of_arrays2:
         b = Analyse_array()
-        print "file " + str(n) + " of " + str(len(list_of_arrays))
+        print "file " + str(n) + " of " + str(len(list_of_arrays2+list_of_arrays1))
 
         # perform the analysis on consecutive probes
         b.get_Z_scores_consec(i)

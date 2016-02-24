@@ -23,8 +23,8 @@ class get_files_and_probes():
         # specify the folder.
         # self.chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
         # self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
-        # self.chosenfolder = "I:\\191015"  # USB
-        self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\zscoretest"
+        self.chosenfolder = "J:\\MSc Project\\prospective"  # USB
+        #self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\zscoretest"
 
         # Create an array to store all the files in.
         self.chosenfiles = []
@@ -255,8 +255,9 @@ class Analyse_array():
         # sql statement
         feparam_ins_statement = """insert into """ + self.feparam_table + """ (FileName) values (%s)"""
         time_ins1 = """insert into Insert_stats(Array_ID,Start_time) values(%s,%s)"""
+         
         try:
-            cursor.execute(feparam_ins_statement, (str(filein)))
+            cursor.execute(feparam_ins_statement, [filein])
             db.commit()
             # print "feparam inserted OK"
             # return the arrayID for the this array (automatically retrieve the Feature_ID from database)
@@ -1073,13 +1074,13 @@ class Analyse_array():
         cursor = db.cursor()
 
         # statements to update the ins_stats table. the first populates the analysis end time and the second changes all the columns into time taken as opposed to time stamps. NB the order of the column updates is important!
-        #update_ins_stats2 = """update insert_stats set Analysis_end_time=%s where array_ID=%s"""
+        update_ins_stats2 = """update insert_stats set Analysis_end_time=%s where array_ID=%s"""
         update_ins_stats3 = """update insert_stats set Analysis_end_time= timediff(%s ,Zscore_time),Zscore_time= timediff(Zscore_time,Ins_time), Ins_time= timediff(Ins_time,Start_time),TotalTime= addtime(Ins_time,Zscore_time), TotalTime=addtime(totaltime,Analysis_end_time) where array_ID=%s"""
 
         try:
             cursor.execute(update_ins_stats2, (str(datetime.now().strftime('%H:%M:%S')), str(arrayID)))
             db.commit()
-            cursor.execute(update_ins_stats3, (str(datetime.now().strftime('%H:%M:%S')),str(arrayID)))
+            cursor.execute(update_ins_stats3, (str(datetime.now().strftime('%H:%M:%S')), str(arrayID)))
             db.commit()
         except MySQLdb.Error, e:
             db.rollback()
