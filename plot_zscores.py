@@ -112,9 +112,9 @@ class Z_score_analysis:
             # get the probe info for each probe within the called region
             for j in range(first_probe, lastprobe + 1):
                 # sql
-                sql2 = "select fe.FileName, p.Probeorder_ID, p.ProbeKey, f.greensigintzscore, f.redsigintzscore \
+                sql2 = "select fe.FileName, p.Probeorder, p.ProbeKey, f.greensigintzscore, f.redsigintzscore \
                 from " + self.features + " f," + self.probeorder + " p," + self.feparam + " fe\
-                where p.ProbeKey=f.ProbeKey and p.Probeorder_ID=%s and fe.Array_ID=f.Array_ID and f.array_ID =%s"
+                where p.ProbeKey=f.ProbeKey and p.Probeorder=%s and fe.Array_ID=f.Array_ID and f.array_ID =%s"
  
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -189,7 +189,7 @@ class Z_score_analysis:
         for i in list_of_arrays:     
             #print i   
             # get the probeorder IDs that should be called for that array (using the reported roi in truepos table). if 2 calls in same array the correct probes are selected using chromsoomes
-            sql3 = "select distinct probeorder.Probeorder_ID \
+            sql3 = "select distinct probeorder.Probeorder \
             from roi, true_pos, consecutive_probes_analysis c, feparam_mini fe, probeorder\
             where roi.ROI_ID=true_pos.ROI_ID and c.Array_ID=fe.Array_ID and substring(fe.FileName,8,3)=true_pos.Array_ID and c.Array_ID=%s and probeorder.start<roi.stop and probeorder.stop>roi.start and probeorder.ChromosomeNumber=roi.ChromosomeNumber and c.Chromosome=probeorder.ChromosomeNumber"
      
@@ -198,7 +198,7 @@ class Z_score_analysis:
             cursor = db.cursor()
      
             try:
-                cursor.execute(sql3, (str(i)))
+                cursor.execute(sql3, [i])
                 abn_probes = cursor.fetchall()
             except MySQLdb.Error, e:
                 db.rollback()
@@ -250,23 +250,23 @@ class Z_score_analysis:
         #print "self.dict_of_zscores_for_CPA_call"
         #print self.dict_of_zscores_for_CPA_call
         # go through the dictionary of probe z scores
-        for i in self.dict_of_zscores_for_CPA_call:
+        for k in self.dict_of_zscores_for_CPA_call:
             # if array_ID matches
             #print i
             # if it's a region which should be called add to dict
-            if i in self.correct_abbers:
-                for j in self.dict_of_zscores_for_CPA_call[i]:
-                    self.truepos.append(j)
+            if k in self.correct_abbers:
+                for l in self.dict_of_zscores_for_CPA_call[k]:
+                    self.truepos.append(l)
                 #print "match"
                 #print self.dict_of_zscores_for_CPA_call[i]
             else:  # if incorrectly called add to different dict.
-                for j in self.dict_of_zscores_for_CPA_call[i]:
-                    self.falsepos.append(j)
+                for l in self.dict_of_zscores_for_CPA_call[k]:
+                    self.falsepos.append(l)
  
         # create an array of true z scores and false z scores
         #print self.truepos
          
-        plt.hist(self.truepos, range=[0,10],bins=200, histtype='step', color='r')
+        #plt.hist(self.truepos, range=[0,10],bins=200, histtype='step', color='r')
         #ax.set_title("truepos z score")
         #ax.annotate("red kurtosis = "+str(r_kurtosis),xy=(2000,12000), xycoords='data')
         #plt.pyplot.show()
@@ -282,6 +282,7 @@ class Z_score_analysis:
 # execute the program
 ################################################################################
 if __name__ == "__main__":
-    array_ID_list = [3,1,54,44,22,82,13,20,36,56,30,48,7,38,42,69,33,47,73,6,63]#,53,75,8,59,61,21,71,10,29,43,77,27,35,41,51,37,19,25]
+    array_ID_list = [100]# 92,96,100,105,106,108,115,119,125,128,132,134,135,136,137,141,142,144,145,151,153,155,156,161,163,164,166,169,176,178,179,182,184,185,186,189,190,191,192,193,195,201,203,206,207]
+#[3,1,54,44,22,82,13,20,36,56,30,48,7,38,42,69,33,47,73,6,63]#,53,75,8,59,61,21,71,10,29,43,77,27,35,41,51,37,19,25]
     a = Z_score_analysis()
     a.read_db(array_ID_list)
