@@ -37,7 +37,7 @@ class Z_score_analysis:
         self.correct_min = 10
 
         # cutoff
-        self.cutoff = """2.374%"""
+        self.cutoff = str(2.374)
 
     # list for all called regions
     consec_probes = []
@@ -89,7 +89,7 @@ class Z_score_analysis:
         # print query_array_list
 
         # read consecutive_probes table
-        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff = like " + self.cutoff
+        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff like '" + self.cutoff + "%'"
 
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -481,7 +481,7 @@ class Z_score_analysis:
 ################################################################################
 if __name__ == "__main__":
     array_ID_list = []
-    for i in range(18,20):#92:
+    for i in range(18,92):
         array_ID_list.append(i)
     # range(221,223),#[951, 949, 1141, 1031, 1067, 1001, 991, 1093, 1129, 1139, 1033, 1083, 1125, 1131, 1069, 1047, 969, 1099, 1029, 1105, 961, 1107, 967, 1055, 1045, 1109, 1103, 1003, 977, 1037, 995, 1095, 1127, 1097, 955, 985, 989, 964, 1016, 980, 1058, 1118, 1066, 1086, 954, 1078, 1010, 1044, 1000, 1022, 956, 1006, 1136, 1008, 1144, 1124, 1062, 968, 1036, 1080, 1018, 1102, 958, 1138, 976, 990, 1060, 1072, 1090, 1122, 1082, 1024, 1050, 974, 1020, 1134, 1096, 1054, 1092, 982, 988, 1088, 994, 998, 984, 1042, 966, 972]  # , 8, 9, 10, 11, 12, 13, 14, 16]  # ,3,54,44,22,82,13,20,36,56,30,48,7,38,42,69,33,47,73,6,63,53,75,8,59,61,21,71,10,29,43,77,27,35,41,51,37,19,25]
     a = Z_score_analysis()
