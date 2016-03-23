@@ -22,8 +22,8 @@ class get_files_and_probes():
         # specify the folder.
         # self.chosenfolder = 'C:\\Users\\user\\workspace\\Parse_FE_File' #laptop
         # self.chosenfolder = "C:\\Users\\Aled\\Google Drive\\MSc project\\truepos"  # PC
-        self.chosenfolder = "J:\\MSc Project\\SIDtest"  # USB
-        #self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\zscoretest"
+        # self.chosenfolder = "J:\\MSc Project\\SIDtest"  # USB
+        self.chosenfolder = "C:\\Users\\Aled\\Documents\\MSc Project\\truepositives_230316"
 
         # Create an array to store all the files in.
         self.chosenfiles = []
@@ -85,7 +85,7 @@ class Analyse_array():
         self.feparam_table = 'feparam_mini'
 
         # features table
-        self.features_table = 'features_mini'
+        self.features_table = 'features_mini_tp'
 
         # cpa table
         self.CPA_table = 'consecutive_probes_analysis'
@@ -220,8 +220,8 @@ class Analyse_array():
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
         # sql statement
-        feparam_ins_statement = """insert into """ + self.feparam_table + """ (FileName) values (%s)"""
-         
+        feparam_ins_statement = """insert into """ + self.feparam_table + """ (FileName,reference_range) values (%s,1)"""
+        
         try:
             cursor.execute(feparam_ins_statement, [filein])
             db.commit()
@@ -229,7 +229,7 @@ class Analyse_array():
             # return the arrayID for the this array (automatically retrieve the Feature_ID from database)
             global arrayID
             arrayID = cursor.lastrowid
-
+            
         except MySQLdb.Error, e:
             db.rollback()
             print "fail - unable to enter feparam information"
@@ -269,6 +269,8 @@ class Analyse_array():
         Analyse_array().create_ins_statements(subset7, subset8)
         Analyse_array().create_ins_statements(subset8, subset9)
         Analyse_array().create_ins_statements(subset9, no_of_probes)
+        
+        
 
     def create_ins_statements(self, start, stop):
         """This takes the start and stop of each subset and loops through the all_features list modifying and appending to a SQL statement and then adding to dictionary """
@@ -326,6 +328,7 @@ class Analyse_array():
 
         # n is a counter to print out progress
         n = 0
+                   
         # print self.insertstatements
         # for each element in the dict pull out the value(sqlstatement) execute
         for i in self.insertstatements:
@@ -333,7 +336,6 @@ class Analyse_array():
             # connect to db and create cursor
             db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
             cursor = db.cursor()
-
             try:
                 cursor.execute(self.insertstatements[i])
                 db.commit()
@@ -345,7 +347,7 @@ class Analyse_array():
                     raise
             finally:
                 db.close()
-
+        
     def CalculateLogRatios(self):
         '''this function receives the arrayID of the recently inserted FEfile and uses the reference values table to calculate the log ratios and Z scores.
         When complete the process of populating the analysis tables is started.'''
@@ -561,8 +563,8 @@ class Analyse_array():
         
         global Zscore_results
         global shared_imbalance
-        global shared_imbalance_combined
         global insertstatements
+        global shared_imbalance_combined
         global features
         global feparam
         global stats
@@ -592,6 +594,7 @@ if __name__ == "__main__":
     for i in a.chosenfiles:
         if i in a.filenames:
             print "pass"
+            n = n + 1
         else:
             b = Analyse_array()
             print "file " + str(n) + " of " + str(len(a.chosenfiles))
