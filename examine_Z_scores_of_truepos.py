@@ -28,13 +28,13 @@ class Z_score_analysis:
         self.database = "dev_featextr"
 
         # output file
-        self.outputfile = "C:\\Users\\Aled\\Google Drive\\MSc project\\Zscore_analysis\\output_eve.csv"
+        self.outputfile = "C:\\Users\\Aled\\Google Drive\\MSc project\\Zscore_analysis\\output.csv"
 
         # tables
-        self.CPA = "consecutive_probes_analysis"
-        self.features = "features_mini"
+        self.truepos = "true_pos"
+        self.features = "paramtest_features"
         self.probeorder = "probeorder"
-        self.feparam = "feparam_mini"
+        self.feparam = "feparam"
 
         # averages
         self.incorrect_average = 0
@@ -68,14 +68,14 @@ class Z_score_analysis:
         ########################################################################
 
         # read consecutive_probes table
-        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID = %s"# and Cutoff = %s "
+        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID = %s and Cutoff = %s "
 
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
 
         try:
-            cursor.execute(sql1, [array_ID])
+            cursor.execute(sql1, (str(array_ID), self.cutoff))
             consec_probes_query = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -89,7 +89,7 @@ class Z_score_analysis:
         for i in consec_probes_query:
             # print i
             self.consec_probes.append(i)
-        
+
         ########################################################################
         # Now have a list of each shared abberation
         # Need to get the Z score for probes in these regions
@@ -105,12 +105,10 @@ class Z_score_analysis:
 
             # get the probe info for each probe within the called region
             for j in range(first_probe, lastprobe + 1):
-                sql2 = "select p.probeorder, p.ProbeKey,fm.greensigintzscore, fm.redsigintzscore \
-                from probeorder p, eve_truepositives e, linkarray2id2evetruepos l, features_mini fm\
-                where p.probeorder = %s and l.evetrueposID=e.ID and l.arrayID=%s and fm.Array_ID=l.arrayID and fm.ProbeKey=p.probekey"
-                # sql2 = "select fe.FileName, p.Probeorder_ID, p.ProbeKey, f.greensigintzscore, f.redsigintzscore \
-                # from " + self.features + " f," + self.probeorder + " p," + self.feparam + " fe\
-                # where p.ProbeKey=f.ProbeKey and p.Probeorder_ID=%s and fe.Array_ID=f.Array_ID and f.array_ID=%s"
+                # sql
+                sql2 = "select fe.FileName, p.probe_ID, p.ProbeKey, f.greensigintzscore, f.redsigintzscore \
+                from " + self.features + " f," + self.probeorder + " p," + self.feparam + " fe\
+                where p.ProbeKey=f.ProbeKey and p.probe_ID=%s and fe.Array_ID=f.Array_ID and f.array_ID=%s"
 
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -129,7 +127,7 @@ class Z_score_analysis:
 
                 # for each probe append the probe scores to a list
                 for k in zscores_result:
-                    self.list_of_probe_info.append((array_ID, CPA_key, gain_loss, k[2], k[3]))
+                    self.list_of_probe_info.append((k[0], array_ID, CPA_key, gain_loss, k[1], k[2], k[3], k[4]))
 
         # now the cpa calls have been used empty the list to ensure the regions aren't used in subsequent arrays
         del self.consec_probes[:]
@@ -137,14 +135,18 @@ class Z_score_analysis:
         ########################################################################
         # in a dictionary combine the z scores for each abberation
         ########################################################################
-        
+
         # loop through the individual probes
         for i in self.list_of_probe_info:
-            array_ID = i[0]
-            CPA_key = int(i[1])
-            gain_loss = i[2]
-            greensigintzscore = i[3]
-            redsigintzscore = i[4]
+            print i
+            filename = i[0]
+            array_ID = i[1]
+            CPA_key = int(i[2])
+            gain_loss = i[3]
+            Probeorder_ID = i[4]
+            ProbeKey = i[5]
+            greensigintzscore = i[6]
+            redsigintzscore = i[7]
 
             # turn the z scores for losses positive to allow minimums and averages to be taken.
             if gain_loss < 0:
@@ -156,38 +158,41 @@ class Z_score_analysis:
 
             # check if in dict already
             if abberation_name in self.dict_of_zscores_for_CPA_call:
-                self.dict_of_zscores_for_CPA_call[abberation_name].append(greensigintzscore)
-                self.dict_of_zscores_for_CPA_call[abberation_name].append(redsigintzscore)
+                # if it is then add the z score for correct colour dye
+                if "GREEN" in filename:
+                    self.dict_of_zscores_for_CPA_call[abberation_name].append(greensigintzscore)
+                elif "RED" in filename:
+                    self.dict_of_zscores_for_CPA_call[abberation_name].append(redsigintzscore)
             else:
                 # if not seen create the dictionary entry for that abberation as a list and append
-                self.dict_of_zscores_for_CPA_call[abberation_name] = []
-                self.dict_of_zscores_for_CPA_call[abberation_name].append(greensigintzscore)
-                self.dict_of_zscores_for_CPA_call[abberation_name] = []
-                self.dict_of_zscores_for_CPA_call[abberation_name].append(redsigintzscore)
-                
+                if "GREEN" in filename:
+                    self.dict_of_zscores_for_CPA_call[abberation_name] = []
+                    self.dict_of_zscores_for_CPA_call[abberation_name].append(greensigintzscore)
+                elif "RED" in filename:
+                    self.dict_of_zscores_for_CPA_call[abberation_name] = []
+                    self.dict_of_zscores_for_CPA_call[abberation_name].append(redsigintzscore)
+
+        #print "array_ID = " + str(array_ID) + "\tfilename:\t" + str(filename)
+
         # call next module
         Z_score_analysis().probes_that_should_be_called(array_ID)
-        
+
     def probes_that_should_be_called(self, array_ID):
         ########################################################################
         # Pull out the region which is abnormal in the array
         ########################################################################
-
+        array_ID=str(array_ID)
         # get the probeorder IDs that should be called for that array (using the reported roi in truepos table)
-        # sql3 = "select distinct probeorder.Probeorder_ID \
-        # from roi, true_pos, " + self.CPA + " c," + self.feparam + " fe, probeorder \
-        # where roi.ROI_ID=true_pos.ROI_ID and c.Array_ID=fe.Array_ID and substring(fe.FileName,8,3)=true_pos.Array_ID and c.Array_ID=%s and probeorder.start<roi.stop and probeorder.stop>roi.start and probeorder.ChromosomeNumber=roi.ChromosomeNumber and c.Chromosome=probeorder.ChromosomeNumber"
-        
-        sql3= "select e.firstprobe,e.lastprobe \
-        from eve_truepositives e, linkarray2id2evetruepos l\
-        where l.evetrueposID=e.ID and l.arrayID=%s"
-        
-        # open connection to database and run SQL select statement
+        sql3 = "select distinct probeorder.Probe_ID \
+        from roi, true_pos, " + self.CPA + " c," + self.feparam + " fe, probeorder \
+        where roi.ROI_ID=true_pos.ROI_ID and c.Array_ID=fe.Array_ID and substring(fe.FileName,8,3)=true_pos.Array_ID and c.Array_ID=%s and probeorder.start<roi.stop and probeorder.stop>roi.start and probeorder.ChromosomeNumber=roi.ChromosomeNumber and c.Chromosome=probeorder.ChromosomeNumber"
+
+        # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
-
+        
         try:
-            cursor.execute(sql3, [array_ID])
+            cursor.execute(sql3, (array_ID))
             abn_probes = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -199,22 +204,22 @@ class Z_score_analysis:
 
         # get the range of probes that should be called for the patient
         firstprobe = abn_probes[0][0]
-        lastprobe = abn_probes[0][1]
-                
+        lastprobe = abn_probes[-1][0]
+
         ########################################################################
         # get all calls within the expected ROI
         ########################################################################
 
         sql4 = "select c.CPA_Key \
             from " + self.CPA + " c \
-            where first_probe<=%s and last_probe>=%s and c.array_ID = %s"
+            where first_probe>=%s and last_probe<=%s and c.array_ID = %s and cutoff = %s"
 
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
 
         try:
-            cursor.execute(sql4, (str(lastprobe), str(firstprobe), str(array_ID)))
+            cursor.execute(sql4, (str(firstprobe), str(lastprobe), array_ID, self.cutoff))
             CPA_key = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -280,8 +285,7 @@ class Z_score_analysis:
 # execute the program
 ################################################################################
 if __name__ == "__main__":
-    array_ID_list = range[33,60,61,67,69,70,73,80,84,89]
+    array_ID_list = [17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
     for i in array_ID_list:
-        print i
         a = Z_score_analysis()
         a.read_db(i)

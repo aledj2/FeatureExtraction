@@ -47,7 +47,7 @@ class Z_score_analysis:
         self.correct_min = 10
         
         # cutoff
-        self.cutoff = str(4)
+        self.cutoff = str(2.374)
 
     # list for all called regions
     consec_probes = []
@@ -106,9 +106,9 @@ class Z_score_analysis:
             # get the probe info for each probe within the called region
             for j in range(first_probe, lastprobe + 1):
                 # sql
-                sql2 = "select fe.FileName, p.Probeorder_ID, p.ProbeKey, f.greensigintzscore, f.redsigintzscore \
+                sql2 = "select fe.FileName, p.probe_ID, p.ProbeKey, f.greensigintzscore, f.redsigintzscore \
                 from " + self.features + " f," + self.probeorder + " p," + self.feparam + " fe\
-                where p.ProbeKey=f.ProbeKey and p.Probeorder_ID=%s and fe.Array_ID=f.Array_ID and f.array_ID=%s"
+                where p.ProbeKey=f.ProbeKey and p.probe_ID=%s and fe.Array_ID=f.Array_ID and f.array_ID=%s"
 
                 # open connection to database and run SQL insert statement
                 db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -138,6 +138,7 @@ class Z_score_analysis:
 
         # loop through the individual probes
         for i in self.list_of_probe_info:
+            print i
             filename = i[0]
             array_ID = i[1]
             CPA_key = int(i[2])
@@ -171,7 +172,7 @@ class Z_score_analysis:
                     self.dict_of_zscores_for_CPA_call[abberation_name] = []
                     self.dict_of_zscores_for_CPA_call[abberation_name].append(redsigintzscore)
 
-        print "array_ID = " + str(array_ID) + "\tfilename:\t" + str(filename)
+        #print "array_ID = " + str(array_ID) + "\tfilename:\t" + str(filename)
 
         # call next module
         Z_score_analysis().probes_that_should_be_called(array_ID)
@@ -180,18 +181,18 @@ class Z_score_analysis:
         ########################################################################
         # Pull out the region which is abnormal in the array
         ########################################################################
-
+        array_ID=str(array_ID)
         # get the probeorder IDs that should be called for that array (using the reported roi in truepos table)
-        sql3 = "select distinct probeorder.Probeorder_ID \
+        sql3 = "select distinct probeorder.Probe_ID \
         from roi, true_pos, " + self.CPA + " c," + self.feparam + " fe, probeorder \
         where roi.ROI_ID=true_pos.ROI_ID and c.Array_ID=fe.Array_ID and substring(fe.FileName,8,3)=true_pos.Array_ID and c.Array_ID=%s and probeorder.start<roi.stop and probeorder.stop>roi.start and probeorder.ChromosomeNumber=roi.ChromosomeNumber and c.Chromosome=probeorder.ChromosomeNumber"
 
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
         cursor = db.cursor()
-
+        
         try:
-            cursor.execute(sql3, (str(array_ID)))
+            cursor.execute(sql3, (array_ID))
             abn_probes = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -218,7 +219,7 @@ class Z_score_analysis:
         cursor = db.cursor()
 
         try:
-            cursor.execute(sql4, (str(firstprobe), str(lastprobe), str(array_ID), self.cutoff))
+            cursor.execute(sql4, (str(firstprobe), str(lastprobe), array_ID, self.cutoff))
             CPA_key = cursor.fetchall()
         except MySQLdb.Error, e:
             db.rollback()
@@ -284,7 +285,7 @@ class Z_score_analysis:
 # execute the program
 ################################################################################
 if __name__ == "__main__":
-    array_ID_list = [18]  # [17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+    array_ID_list = [17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
     for i in array_ID_list:
         a = Z_score_analysis()
         a.read_db(i)
