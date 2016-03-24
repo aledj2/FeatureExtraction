@@ -24,14 +24,14 @@ class Analyse_array():
         self.feparam_table = 'feparam'
 
         # features table
-        self.features_table = 'features_mini_tp'
+        self.features_table = 'features_mini'
 
         # CPA table
         self.CPA_table = "consecutive_probes_analysis"
 
         # Z score cutoff
 
-        self.Zscore_cutoff = int(3)
+        self.Zscore_cutoff = float(4.25)
 
 
         # number to letter dict
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     #list_of_arrays2 = [949,1141,1031,1067,1001,991,1093,1129,1139,1033,1083,1125,1131,1069,1047,969,1099,1029,1105,961,1107,967,983,1013,1055,1045,1109,1103,1003,1119,977,1037,995,1095,1025,1127,1097,955,985,989,964,1016,980,1058,994,960,1118,1066,1114,1020,1086,954,1064,1078,1040,1010,1044,1000,1022,1028,956,1006,1136,1008,1116,1144,1124,1062,968,1076,1072,1036,1080,1018,1102,958,1052,1138,1012,976,990,1042,1060,1090,1122,1082,1056,1024,1050,974,1134,1096,1054,1092,982,988,1088,1112,998,1074,984,966,972] 
     
     array_ID_list = []
-    for i in range(292, 378):
+    for i in range(18,34) + range(35,81) + range(85,92):
         array_ID_list.append(i)
         
     n = 1
@@ -295,7 +295,7 @@ if __name__ == "__main__":
         b.redefine_shared_region()
         b.describe_imbalance()
 
-        # perform analysis on defined regions (get ROI calls subsequent modules)
+        # perform analysis on defined regions (getROI calls subsequent modules)
         # b.GetROI()
 
         # b.final_update_stats()
