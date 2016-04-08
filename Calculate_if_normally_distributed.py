@@ -17,7 +17,7 @@ features_table = "features_mini"
 #features_table = "features"
 
 # select all probes from a table
-query = "select gProcessedSignal, rProcessedSignal from " + features_table #+ " where array_ID = 11"
+query = "select f.gProcessedSignal,f.rProcessedSignal from " + features_table +" f, probeorder p where f.array_ID between 92 and 123 and p.ProbeKey=f.ProbeKey and p.chromosomenumber < 23"
 
 #lists of signal intensities
 red_probes=[]
@@ -47,25 +47,54 @@ green_probes=sorted(green_probes)
 red_mean=np.mean(red_probes)
 green_mean=np.mean(green_probes)
 
+red_median=np.median(red_probes)
+green_median=np.median(green_probes)
+
+red_q75, red_q25 = np.percentile(red_probes, [75 ,25])
+green_q75, green_q25 = np.percentile(green_probes, [75 ,25])
+
 red_SD=np.std(red_probes)
 green_SD=np.std(green_probes)
 
+print "red_mean "+str(red_mean)
+print "green_mean "+str(green_mean)
+print "red_median "+str(red_median)
+print "green_median "+str(green_median)
+print "red_IQR "+str(red_q25)+"-"+str(red_q75)
+print "green_IQR "+str(green_q25)+"-"+str(green_q75)
 
 #calculate kurtosis
-g_kurtosis, g_pvalue = scipy.normaltest(green_probes)
-r_kurtosis, r_pvalue = scipy.normaltest(red_probes)
+#g_kurtosis, g_pvalue = scipy.kurtosistest(green_probes)
+#r_kurtosis, r_pvalue = scipy.kurtosistest(red_probes)
+
+g_kurtosis = scipy.kurtosis(green_probes)
+r_kurtosis = scipy.kurtosis(red_probes)
+
+print "green kurtosis = " + str(g_kurtosis)
+print "red kurtosis = " + str(r_kurtosis)
+
+print "Red skew value: " + str(scipy.skew(red_probes))
+print "green skew value: " + str(scipy.skew(green_probes))
 
 #print max(red_probes)
 fig=plt.pyplot.figure()
-ax=fig.add_subplot(121)
-ax.hist(red_probes, range=[0,3000],bins=100, histtype='step', color='r')
-ax.set_title("red probe Z score")
-ax.annotate("red kurtosis = "+str(r_kurtosis),xy=(2000,12000), xycoords='data')
-#plt.pyplot.show()
-ax2=fig.add_subplot(122)
-ax2.hist(green_probes, range=[0,3000], bins=100, histtype='step', color='g')
-ax2.set_title("green probe Z score")
-ax2.annotate("green kurtosis = "+str(g_kurtosis),xy=(2000,12000), xycoords='data')
+ax=fig.add_subplot(111)
+ax.hist(green_probes, range=[0,2000], bins=300, histtype='step', color='g',label="Cy3")
+ax.hist(red_probes, range=[0,2000],bins=300, histtype='step', color='r', label="Cy5")
+ax.set_title("Distribution of Z scores")
+ax.legend(loc='upper right')
+ax.set_ylabel('n')
+ax.set_xlabel('Arbitrary fluorescence units')
+
+ax.annotate("red mean = "+str(red_mean),xy=(100,10000), xycoords='data')
+ax.annotate("red median = "+str(red_median),xy=(100,9000), xycoords='data')
+ax.annotate("red IQR = "+str(red_q25)+"-"+str(red_q75),xy=(100,8000), xycoords='data')
+ax.annotate("Green mean = "+str(green_mean),xy=(1600,10000), xycoords='data')
+ax.annotate("Green median = "+str(green_median),xy=(1600,9000), xycoords='data')
+ax.annotate("Green IQR = "+str(green_q25)+"-"+str(green_q75),xy=(1600,8000), xycoords='data')
+
+#ax2.set_title("green probe Z score")
+#ax2.annotate("green kurtosis = "+str(g_kurtosis),xy=(2000,12000), xycoords='data')
 plt.pyplot.tight_layout()
 plt.pyplot.show()
 ################################################################################
