@@ -357,7 +357,7 @@ class Analyse_array():
         cursor = db.cursor()
 
         # statement to update the features table to populate the probekey (numeric keys to speed up subsequent steps)
-        update_features ="update {0} f, probeorder p, {1} r set f.probekey=p.probekey,f.GreenLogratio=log2(f.gprocessedsignal/r.gsignalint),f.RedlogRatio=log2(f.rprocessedsignal/r.rsignalint), f.greensigintzscore=((f.gProcessedSignal-r.gSignalInt)/r.gSignalIntSD),f.redsigintzscore=((f.rProcessedSignal-r.rSignalInt)/r.rSignalIntSD), referencevaluetable='{2}' where r.probekey=p.probekey and p.probename=f.probename and f.array_ID={3}".format(self.features_table, self.reference_values,self.reference_values, arrayID)
+        update_features ="update {0} f, probeorder p, {1} r set f.probekey=p.probekey,f.GreenLogratio=log2(f.gprocessedsignal/r.gsignalint),f.RedlogRatio=log2(f.rprocessedsignal/r.rsignalint), f.greensigintzscore=((f.gProcessedSignal-r.gSignalInt)/r.gSignalIntSD),f.redsigintzscore=((f.rProcessedSignal-r.rSignalInt)/r.rSignalIntSD) where r.probekey=p.probekey and p.probename=f.probename and f.array_ID={2}".format(self.features_table, self.reference_values, arrayID)
 
         try:
             cursor.execute(update_features)
