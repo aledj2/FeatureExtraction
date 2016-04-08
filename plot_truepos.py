@@ -37,11 +37,12 @@ class Z_score_analysis:
         self.correct_min = 10
 
         # cutoff
-        self.cutoff = float(2.374)
+        self.cutoff = str(2.374)
+        print self.cutoff
 
     # list for all called regions
     consec_probes = []
-    cpa_keys=[]
+    cpa_keys = []
 
     # list for all probe info for each probe within a called region
     list_of_probe_info = []
@@ -86,10 +87,10 @@ class Z_score_analysis:
                 query_array_list = query_array_list + str(array)
         query_array_list = query_array_list + ")"
 
-        # print query_array_list
+        print query_array_list
 
         # read consecutive_probes table
-        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff like '" + self.cutoff + "%'"
+        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff like " + self.cutoff
 
         # open connection to database and run SQL insert statement
         db = MySQLdb.Connect(host=self.host, port=self.port, user=self.username, passwd=self.passwd, db=self.database)
@@ -154,7 +155,6 @@ class Z_score_analysis:
                 for k in zscores_result:
                     # print k
                     self.list_of_probe_info.append((k[0], CPA_key, gain_loss, k[1], k[2], k[3], k[4]))
-                    
 
         # now the cpa calls have been used empty the list to ensure the regions aren't used in subsequent arrays
         del self.consec_probes[:]
@@ -267,8 +267,8 @@ class Z_score_analysis:
                     cpakey = int(k[0])
                     self.correct_abbers[cpakey] = []
 
-        print self.correct_abbers
-        print self.cpa_keys
+        print "self.correct_abbers", self.correct_abbers
+        print "self.cpa_keys", self.cpa_keys
         # Count the true positives and the false positives
         # for each array
         for i in list_of_arrays:
@@ -288,14 +288,14 @@ class Z_score_analysis:
             # add array_ID, count of correct and incorrect calls to array)
             self.sensitivity.append((array_ID2, correct_call, incorrect_call))
 
-        print self.sensitivity
+        print "self.sensitivity", self.sensitivity
         false_negatives = 0
         true_positives = 0
         false_positives = 0
         true_negatives = 0
         false_positives = 0
         total_true_calls = 0
-        total_false_calls = 0 
+        total_false_calls = 0
         for i in self.sensitivity:
             array = i[0]
             TP = i[1]
@@ -308,8 +308,7 @@ class Z_score_analysis:
                 true_negatives = true_negatives + 1
             else:
                 false_positives = false_positives + 1
-                
-            false_positives = false_positives + FP
+
             total_true_calls = total_true_calls + TP
             total_false_calls = total_false_calls + FP
 
@@ -338,7 +337,7 @@ class Z_score_analysis:
                 sum = 0
                 min = 100
                 max = 0
-                self.len_gain_truepos.append((len(self.pos_dict_of_zscores_for_CPA_call[i])/2))
+                self.len_gain_truepos.append((len(self.pos_dict_of_zscores_for_CPA_call[i]) / 2))
                 for j in self.pos_dict_of_zscores_for_CPA_call[i]:
                     count = count + 1
                     sum = sum + j
@@ -356,7 +355,7 @@ class Z_score_analysis:
                 sum = 0
                 min = 100
                 max = 0
-                self.len_gain_falsepos.append((len(self.pos_dict_of_zscores_for_CPA_call[i])/2))
+                self.len_gain_falsepos.append((len(self.pos_dict_of_zscores_for_CPA_call[i]) / 2))
                 for j in self.pos_dict_of_zscores_for_CPA_call[i]:
                     count = count + 1
                     sum = sum + j
@@ -378,7 +377,7 @@ class Z_score_analysis:
                 max = -100
                 count = 0
                 sum = 0
-                self.len_loss_truepos.append((len(self.neg_dict_of_zscores_for_CPA_call[i])/2))
+                self.len_loss_truepos.append((len(self.neg_dict_of_zscores_for_CPA_call[i]) / 2))
                 for j in self.neg_dict_of_zscores_for_CPA_call[i]:
                     if j < min:
                         min = j
@@ -396,7 +395,7 @@ class Z_score_analysis:
                 sum = 0
                 min = 100
                 max = -100
-                self.len_loss_falsepos.append((len(self.neg_dict_of_zscores_for_CPA_call[i])/2))
+                self.len_loss_falsepos.append((len(self.neg_dict_of_zscores_for_CPA_call[i]) / 2))
                 for j in self.neg_dict_of_zscores_for_CPA_call[i]:
                     count = count + 1
                     sum = sum + j
@@ -428,7 +427,7 @@ class Z_score_analysis:
         ax2.hist(self.gain_average_falsepos, bins=100, range=[-12, 12], histtype='stepfilled', color='g', label="Gain")
         ax2.set_title("False positives")
         ax2.legend(loc='upper right')
-        fig.suptitle("Training cases- The average Z scores for each call @ "+str(self.cutoff))
+        fig.suptitle("Training cases- The average Z scores for each call @ " + str(self.cutoff))
 ################################################################################
 #         ax3 = fig.add_subplot(223)
 #         ax3.hist(self.loss_average_falsepos, bins=100, range=[-20, 0], histtype='stepfilled', color='r', label="Average loss false positive Z score")
@@ -450,7 +449,7 @@ class Z_score_analysis:
         ax6.hist(self.gain_min_falsepos, bins=100, range=[-12, 12], histtype='stepfilled', color='g', label="Gain")
         ax6.set_title("False positives")
         ax6.legend(loc='upper right')
-        fig2.suptitle("Training cases- The lowest confidence Z scores for each call @ "+str(self.cutoff))
+        fig2.suptitle("Training cases- The lowest confidence Z scores for each call @ " + str(self.cutoff))
 ################################################################################
 #         ax7 = fig2.add_subplot(223)
 #         ax7.hist(self.loss_max_falsepos, bins=100, range=[-20, 0], histtype='stepfilled', color='r', label="Max loss false positive Z score")
@@ -472,7 +471,7 @@ class Z_score_analysis:
         ax10.hist(self.gain_max_falsepos, bins=100, range=[-12, 12], histtype='stepfilled', color='g', label="Gain")
         ax10.set_title("False positives")
         ax10.legend(loc='upper right')
-        fig3.suptitle("Training cases- The highest confidence Z scores for each call @ "+str(self.cutoff))
+        fig3.suptitle("Training cases- The highest confidence Z scores for each call @ " + str(self.cutoff))
 ################################################################################
 #         ax11 = fig3.add_subplot(223)
 #         ax11.hist(self.loss_min_falsepos, bins=100, range=[-20, 0], histtype='stepfilled', color='r', label="Min loss false positive Z score")
@@ -498,7 +497,7 @@ class Z_score_analysis:
         ax16 = fig4.add_subplot(224)
         ax16.hist(self.len_gain_falsepos, bins=25, range=[0, 25], histtype='stepfilled', color='g', label="len gain false positive Z score")
         ax16.set_title("False Positive - Gain")
-        fig4.suptitle("Test cases- The number of probes in each call @ "+str(self.cutoff))
+        fig4.suptitle("Training cases- The number of probes in each call @ " + str(self.cutoff))
 
 ################################################################################
 #         ax17 = fig5.add_subplot(211)
@@ -520,7 +519,8 @@ class Z_score_analysis:
 ################################################################################
 if __name__ == "__main__":
     array_ID_list = []
-    for i in range(292, 378):
+    for i in range(292, 327) + range(329, 330) + range(331, 365) + range(366, 371) + range(372, 378):
+    # for i in range(292, 378):
         array_ID_list.append(i)
     # range(221,223),#[951, 949, 1141, 1031, 1067, 1001, 991, 1093, 1129, 1139, 1033, 1083, 1125, 1131, 1069, 1047, 969, 1099, 1029, 1105, 961, 1107, 967, 1055, 1045, 1109, 1103, 1003, 977, 1037, 995, 1095, 1127, 1097, 955, 985, 989, 964, 1016, 980, 1058, 1118, 1066, 1086, 954, 1078, 1010, 1044, 1000, 1022, 956, 1006, 1136, 1008, 1144, 1124, 1062, 968, 1036, 1080, 1018, 1102, 958, 1138, 976, 990, 1060, 1072, 1090, 1122, 1082, 1024, 1050, 974, 1020, 1134, 1096, 1054, 1092, 982, 988, 1088, 994, 998, 984, 1042, 966, 972]  # , 8, 9, 10, 11, 12, 13, 14, 16]  # ,3,54,44,22,82,13,20,36,56,30,48,7,38,42,69,33,47,73,6,63,53,75,8,59,61,21,71,10,29,43,77,27,35,41,51,37,19,25]
     a = Z_score_analysis()

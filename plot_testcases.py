@@ -35,7 +35,7 @@ class Z_score_analysis:
         self.correct_min = 10
 
         # cutoff
-        self.cutoff = str(4)
+        self.cutoff = str(3.75)
 
     # list for all called regions
     consec_probes = []
@@ -88,7 +88,7 @@ class Z_score_analysis:
 
         # read consecutive_probes table
         #sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff like '" + self.cutoff + "%'"
-        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff = " + self.cutoff
+        sql1 = "select Array_ID, Chromosome ,first_probe,last_probe,Gain_Loss,CPA_Key from " + self.CPA + " where array_ID in " + query_array_list + " and Cutoff like " + self.cutoff
 
         # print sql1
         # open connection to database and run SQL insert statement
